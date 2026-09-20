@@ -1,7 +1,6 @@
 # Notemark
 
 [![Latest release](https://img.shields.io/github/v/release/forhadkhan/notemark?label=release)](https://github.com/forhadkhan/notemark/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/forhadkhan/notemark/total?label=downloads)](https://github.com/forhadkhan/notemark/releases)
 [![License](https://img.shields.io/github/license/forhadkhan/notemark?label=licence)](LICENSE)
 
 A Notion-style Markdown editor for Linux. The rendered page is the editor: you

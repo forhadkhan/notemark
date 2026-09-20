@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Notemark
+GenericName=Markdown Editor
+Comment=Write Markdown in a clean, Notion-style page
+Exec=notemark %F
+Icon=notemark
+Terminal=false
+Categories=Utility;TextEditor;GTK;
+MimeType=text/markdown;text/x-markdown;text/plain;
+Keywords=markdown;md;notes;editor;viewer;notion;wysiwyg;writing;
+StartupNotify=true
+StartupWMClass=notemark

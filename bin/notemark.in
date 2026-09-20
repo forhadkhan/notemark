@@ -1,0 +1,3 @@
+#!/bin/sh
+# Notemark launcher. The library path below is filled in at install time.
+exec python3 "@LIBDIR@/notemark.py" "$@"

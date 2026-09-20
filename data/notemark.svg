@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2f2f2f"/>
+      <stop offset="1" stop-color="#151515"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="112" height="112" rx="26" fill="url(#g)"/>
+  <!-- page -->
+  <rect x="30" y="24" width="68" height="80" rx="8" fill="#ffffff"/>
+  <!-- heading bar -->
+  <rect x="42" y="38" width="30" height="7" rx="3.5" fill="#37352f"/>
+  <!-- text lines -->
+  <rect x="42" y="54" width="44" height="4" rx="2" fill="#b8b6b0"/>
+  <rect x="42" y="64" width="38" height="4" rx="2" fill="#b8b6b0"/>
+  <!-- task row -->
+  <rect x="42" y="76" width="11" height="11" rx="2.5" fill="#2383e2"/>
+  <path d="M44.5 81.5l2.6 2.6 4.6-5" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="58" y="79.5" width="28" height="4" rx="2" fill="#b8b6b0"/>
+</svg>

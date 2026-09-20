@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-mode="page">
+<head>
+<meta charset="utf-8">
+<title>Notemark</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div id="workspace">
+    <section id="editor-pane" class="pane">
+      <div class="page-inner">
+        <textarea id="editor" spellcheck="true" autocomplete="off" autocapitalize="off"
+                  placeholder="Markdown source"></textarea>
+      </div>
+    </section>
+    <div id="divider" aria-hidden="true"></div>
+    <section id="page-pane" class="pane">
+      <article id="page" class="page-inner prose" contenteditable="true" spellcheck="true" data-placeholder="Start writing… Markdown shortcuts work: # heading, - list, [] task, > quote, ``` code"></article>
+    </section>
+  </div>
+  <script src="vendor/marked.umd.js"></script>
+  <script src="vendor/turndown.umd.js"></script>
+  <script src="vendor/turndown-plugin-gfm.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

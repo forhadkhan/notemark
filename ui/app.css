@@ -1,0 +1,146 @@
+/* ---------- Theme tokens ---------- */
+:root {
+  --bg: #ffffff;
+  --fg: #37352f;
+  --muted: #787774;
+  --border: #e9e9e7;
+  --code-bg: #f7f6f3;
+  --inline-code-bg: rgba(135, 131, 120, 0.15);
+  --inline-code-fg: #eb5757;
+  --accent: #2383e2;
+  --selection: rgba(35, 131, 226, 0.28);
+  --link: #2383e2;
+  --quote-border: #37352f;
+  --table-head: #f7f6f3;
+  --scrollbar: rgba(0, 0, 0, 0.22);
+  --pane-alt: #fbfbfa;
+  --callout: #f1f1ef;
+}
+html[data-theme="dark"] {
+  --bg: #191919;
+  --fg: #d4d4d4;
+  --muted: #9b9b9b;
+  --border: #2f2f2f;
+  --code-bg: #202020;
+  --inline-code-bg: rgba(135, 131, 120, 0.22);
+  --inline-code-fg: #ff7b72;
+  --accent: #529cca;
+  --selection: rgba(82, 156, 202, 0.35);
+  --link: #529cca;
+  --quote-border: #d4d4d4;
+  --table-head: #202020;
+  --scrollbar: rgba(255, 255, 255, 0.22);
+  --pane-alt: #1c1c1c;
+  --callout: #252525;
+}
+
+/* ---------- Base ---------- */
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; height: 100%;
+  background: var(--bg); color: var(--fg);
+  font-family: "Inter", -apple-system, "Segoe UI", "Noto Sans", "Cantarell", "Ubuntu", "Helvetica Neue", sans-serif;
+  font-size: 16px; line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+::selection { background: var(--selection); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 8px; border: 2px solid var(--bg); }
+::-webkit-scrollbar-track { background: transparent; }
+
+#workspace { display: flex; height: 100%; }
+.pane { flex: 1 1 0; min-width: 0; overflow-y: auto; overflow-x: hidden; }
+#divider { display: none; width: 1px; background: var(--border); flex: none; }
+
+.page-inner, .page {
+  max-width: 760px; margin: 0 auto;
+  padding: 64px 48px 40vh;
+}
+
+/* ---------- Modes ---------- */
+html[data-mode="source"] #page-pane { display: none; }
+html[data-mode="page"] #editor-pane { display: none; }
+html[data-mode="split"] #divider { display: block; }
+html[data-mode="split"] #page-pane { background: var(--pane-alt); }
+html[data-mode="split"] .page-inner { padding-left: 40px; padding-right: 40px; }
+
+/* ---------- WYSIWYG page ---------- */
+#page { outline: none; caret-color: var(--accent); min-height: 40vh; cursor: text; }
+#page > p:only-child:has(> br:only-child) { position: relative; }
+#page > p:only-child:has(> br:only-child)::before {
+  content: "Start writing\2026  Shortcuts: # heading, - list, [] task, > quote, ``` code";
+  color: var(--muted); opacity: 0.8; pointer-events: none; position: absolute; left: 0; top: 0;
+}
+.prose pre code { white-space: pre; }
+.prose hr, .prose img { user-select: none; }
+
+/* ---------- Prose (Notion-like) ---------- */
+.prose > :first-child { margin-top: 0; }
+.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+  font-weight: 700; line-height: 1.25; letter-spacing: -0.01em; margin: 1.6em 0 0.4em;
+}
+.prose h1 { font-size: 2.2em; margin-top: 0.6em; letter-spacing: -0.02em; }
+.prose h2 { font-size: 1.6em; }
+.prose h3 { font-size: 1.3em; }
+.prose h4 { font-size: 1.1em; }
+.prose h5, .prose h6 { font-size: 1em; color: var(--muted); }
+.prose p { margin: 0.35em 0 0.9em; }
+.prose a { color: var(--link); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--link) 45%, transparent); text-underline-offset: 2px; }
+.prose a:hover { text-decoration-color: var(--link); }
+.prose strong { font-weight: 650; }
+.prose hr { border: 0; border-top: 1px solid var(--border); margin: 1.6em 0; }
+.prose img { max-width: 100%; border-radius: 4px; }
+
+.prose ul, .prose ol { padding-left: 1.6em; margin: 0.3em 0 0.9em; }
+.prose li { margin: 0.2em 0; }
+.prose li > p { margin: 0; }
+.prose li::marker { color: var(--muted); }
+.prose ul ul, .prose ol ol, .prose ul ol, .prose ol ul { margin: 0.1em 0; }
+.prose li.task { list-style: none; margin-left: -1.6em; padding-left: 0; display: flex; align-items: flex-start; gap: 0.55em; }
+.prose li.task input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none; flex: none;
+  width: 16px; height: 16px; margin-top: 0.4em;
+  border: 1.5px solid var(--muted); border-radius: 3px; cursor: pointer;
+  background: transparent; position: relative;
+}
+.prose li.task input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
+.prose li.task input[type="checkbox"]:checked::after {
+  content: ""; position: absolute; left: 4.5px; top: 1px; width: 4px; height: 8px;
+  border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.prose li.task.done > .task-text { color: var(--muted); text-decoration: line-through; }
+.prose li.task .task-text { flex: 1; min-width: 0; }
+
+.prose blockquote {
+  margin: 0.9em 0; padding: 0.1em 0 0.1em 1em;
+  border-left: 3px solid var(--quote-border);
+}
+.prose blockquote > p { margin: 0.3em 0; }
+.prose blockquote.callout {
+  border: 0; border-radius: 6px; background: var(--callout); padding: 14px 18px;
+}
+
+.prose code {
+  font-family: "JetBrains Mono", "Fira Code", "SFMono-Regular", "Noto Sans Mono", "DejaVu Sans Mono", monospace;
+  font-size: 0.86em;
+}
+.prose :not(pre) > code {
+  background: var(--inline-code-bg); color: var(--inline-code-fg);
+  padding: 0.15em 0.4em; border-radius: 3px;
+}
+.prose pre {
+  background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px;
+  padding: 16px 18px; overflow-x: auto; margin: 0.9em 0; line-height: 1.5;
+}
+.prose pre code { background: transparent; padding: 0; color: inherit; font-size: 0.86em; }
+
+.prose table { border-collapse: collapse; width: 100%; margin: 0.9em 0; font-size: 0.95em; display: block; overflow-x: auto; }
+.prose th, .prose td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; vertical-align: top; }
+.prose th { background: var(--table-head); font-weight: 600; }
+
+.prose kbd {
+  font-family: inherit; font-size: 0.85em; padding: 1px 6px;
+  border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; background: var(--code-bg);
+}
+.prose del { color: var(--muted); }
+.prose mark { background: rgba(255, 212, 0, 0.35); color: inherit; border-radius: 2px; }

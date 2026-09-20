@@ -1,11 +1,25 @@
 # Notemark
 
+[![Latest release](https://img.shields.io/github/v/release/forhadkhan/notemark?label=release)](https://github.com/forhadkhan/notemark/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/forhadkhan/notemark/total?label=downloads)](https://github.com/forhadkhan/notemark/releases)
+[![License](https://img.shields.io/github/license/forhadkhan/notemark?label=licence)](LICENSE)
+
 A Notion-style Markdown editor for Linux. The rendered page is the editor: you
 type into formatted text, Markdown shortcuts convert as you type, and your notes
 stay as plain `.md` files on disk.
 
 No Electron, no accounts, no sync. The application is a single Python file
 driving GTK 3 and WebKitGTK, and the installed package is under 250 KB.
+
+[![Download the latest release](https://img.shields.io/badge/Download-latest%20release-2383e2?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/forhadkhan/notemark/releases/latest)
+
+| You are on | Take |
+| --- | --- |
+| Debian, Ubuntu, Mint, Pop!\_OS | `notemark_<version>_all.deb` |
+| Anything else, no installation | `Notemark-<version>-x86_64.AppImage` |
+| No root access, or prefer a portable tree | `notemark-<version>-linux.tar.gz` |
+
+Commands for each are in [Installation](#installation) below.
 
 ![Notemark in page mode, light theme](screenshots/light-page.png)
 

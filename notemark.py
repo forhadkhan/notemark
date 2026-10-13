@@ -28,7 +28,8 @@ CONFIG_FILE = os.path.join(CONFIG_DIR, "settings.json")
 
 ZOOM_STEPS = [0.5, 0.67, 0.75, 0.8, 0.9, 1.0, 1.1, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0]
 MODES = ("page", "source", "split")
-DEFAULT_SETTINGS = {"theme": "light", "zoom": 1.0, "mode": "page"}
+LAYOUTS = (("lr", "Editor left"), ("rl", "Editor right"), ("tb", "Editor top"), ("bt", "Editor bottom"))
+DEFAULT_SETTINGS = {"theme": "light", "zoom": 1.0, "mode": "page", "layout": "lr", "split": 50.0, "sync": True}
 
 
 # --------------------------------------------------------------------------- #
@@ -43,6 +44,13 @@ def load_settings():
             settings["theme"] = data["theme"]
         if data.get("mode") in MODES:
             settings["mode"] = data["mode"]
+        if data.get("layout") in dict(LAYOUTS):
+            settings["layout"] = data["layout"]
+        if isinstance(data.get("sync"), bool):
+            settings["sync"] = data["sync"]
+        split = float(data.get("split", 50.0))
+        if 15.0 <= split <= 85.0:
+            settings["split"] = split
         zoom = float(data.get("zoom", 1.0))
         if ZOOM_STEPS[0] <= zoom <= ZOOM_STEPS[-1]:
             settings["zoom"] = zoom
@@ -87,6 +95,8 @@ class NotemarkWindow(Gtk.ApplicationWindow):
         self.web_ready = False
         self._pending_text = None
         self._pending_action = None
+        self._words = self._chars = 0
+        self._cursor = ""
 
         self.set_default_size(1080, 760)
         self.set_icon_name("notemark")
@@ -143,6 +153,13 @@ class NotemarkWindow(Gtk.ApplicationWindow):
         menu = Gio.Menu()
         menu.append("Save As…", "app.save-as")
         menu.append("Export HTML…", "app.export-html")
+        layout_section = Gio.Menu()
+        for key, label in LAYOUTS:
+            layout_section.append(label, "app.layout::" + key)
+        menu.append_section("Split layout", layout_section)
+        view_section = Gio.Menu()
+        view_section.append("Synchronised scrolling", "app.sync-scroll")
+        menu.append_section(None, view_section)
         section = Gio.Menu()
         section.append("Reset Zoom", "app.zoom-reset")
         section.append("Keyboard Shortcuts", "app.shortcuts")
@@ -228,6 +245,9 @@ class NotemarkWindow(Gtk.ApplicationWindow):
             self.call_js("init", {
                 "theme": self.settings["theme"],
                 "mode": self.settings["mode"],
+                "layout": self.settings["layout"],
+                "split": self.settings["split"],
+                "sync": self.settings["sync"],
             })
             if self._pending_text is not None:
                 self.call_js("load", self._pending_text)
@@ -242,7 +262,8 @@ class NotemarkWindow(Gtk.ApplicationWindow):
         kind = msg.get("type")
         if kind == "changed":
             self.dirty = bool(msg.get("dirty"))
-            self._update_status(msg.get("words", 0), msg.get("chars", 0))
+            self._words, self._chars = msg.get("words", 0), msg.get("chars", 0)
+            self._update_status(self._words, self._chars)
             self._update_title()
         elif kind == "link":
             href = msg.get("href", "")
@@ -250,6 +271,15 @@ class NotemarkWindow(Gtk.ApplicationWindow):
                 Gtk.show_uri_on_window(self, href, Gdk.CURRENT_TIME)
         elif kind == "content":
             self._deliver_content(msg.get("text", ""))
+        elif kind == "split":
+            try:
+                self.settings["split"] = round(float(msg.get("pct", 50.0)), 1)
+                save_settings(self.settings)
+            except (TypeError, ValueError):
+                pass
+        elif kind == "cursor":
+            self._cursor = "Ln %s, Col %s" % (msg.get("line", 1), msg.get("col", 1))
+            self._update_status(self._words, self._chars)
         elif kind == "mode":
             mode = msg.get("mode")
             if mode in MODES:
@@ -305,7 +335,13 @@ class NotemarkWindow(Gtk.ApplicationWindow):
         self.status_left.set_text(self.file_path or "Unsaved document")
 
     def _update_status(self, words, chars):
-        self.status_right.set_text("{:,} words · {:,} characters".format(words, chars))
+        minutes = max(1, round(words / 220)) if words else 0
+        parts = [self._cursor] if self._cursor and self.settings["mode"] != "page" else []
+        parts.append("{:,} words".format(words))
+        parts.append("{:,} characters".format(chars))
+        if minutes:
+            parts.append("~%d min read" % minutes)
+        self.status_right.set_text(" · ".join(parts))
 
     # ----- Mode ------------------------------------------------------------ #
     def _on_mode_toggled(self, btn, mode):
@@ -325,6 +361,17 @@ class NotemarkWindow(Gtk.ApplicationWindow):
 
     def toggle_mode(self):
         self.set_mode("source" if self.settings["mode"] == "page" else "page")
+
+    # ----- Split layout ---------------------------------------------------- #
+    def set_layout(self, layout):
+        self.settings["layout"] = layout
+        save_settings(self.settings)
+        self.call_js("setLayout", layout)
+
+    def set_sync(self, on):
+        self.settings["sync"] = on
+        save_settings(self.settings)
+        self.call_js("setSync", on)
 
     # ----- Theme ----------------------------------------------------------- #
     def apply_theme(self, theme, persist=True):
@@ -572,6 +619,21 @@ class NotemarkApp(Gtk.Application):
             "about": (lambda: self.window.show_about(), []),
             "quit": (lambda: self.window.close(), ["<Primary>q"]),
         }
+        layout = Gio.SimpleAction.new_stateful(
+            "layout", GLib.VariantType.new("s"), GLib.Variant.new_string(load_settings()["layout"]))
+
+        def on_layout(action, value):
+            action.set_state(value)
+            self.window.set_layout(value.get_string())
+        layout.connect("change-state", on_layout)
+        self.add_action(layout)
+        sync = Gio.SimpleAction.new_stateful("sync-scroll", None, GLib.Variant.new_boolean(load_settings()["sync"]))
+
+        def on_sync(action, value):
+            action.set_state(value)
+            self.window.set_sync(value.get_boolean())
+        sync.connect("change-state", on_sync)
+        self.add_action(sync)
         for name, (fn, accels) in actions.items():
             action = Gio.SimpleAction.new(name, None)
             action.connect("activate", lambda a, p, fn=fn: fn())

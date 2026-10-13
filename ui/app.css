@@ -15,6 +15,9 @@
   --scrollbar: rgba(0, 0, 0, 0.22);
   --pane-alt: #fbfbfa;
   --callout: #f1f1ef;
+  --editor-bg: #fbfbfa;
+  --editor-fg: #37352f;
+  --divider-hover: rgba(35, 131, 226, 0.45);
 }
 html[data-theme="dark"] {
   --bg: #191919;
@@ -32,6 +35,9 @@ html[data-theme="dark"] {
   --scrollbar: rgba(255, 255, 255, 0.22);
   --pane-alt: #1c1c1c;
   --callout: #252525;
+  --editor-bg: #1c1c1c;
+  --editor-fg: #d4d4d4;
+  --divider-hover: rgba(82, 156, 202, 0.55);
 }
 
 /* ---------- Base ---------- */
@@ -48,21 +54,50 @@ html, body {
 ::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 8px; border: 2px solid var(--bg); }
 ::-webkit-scrollbar-track { background: transparent; }
 
-#workspace { display: flex; height: 100%; }
-.pane { flex: 1 1 0; min-width: 0; overflow-y: auto; overflow-x: hidden; }
-#divider { display: none; width: 1px; background: var(--border); flex: none; }
+#workspace { display: flex; height: 100%; --split: 50%; }
+.pane { flex: 1 1 0; min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+#divider { display: none; flex: none; background: var(--border); position: relative; z-index: 5; }
+/* Wider invisible hit area so the 1px line is easy to grab. */
+#divider::after { content: ""; position: absolute; inset: 0; transition: background 0.12s; }
+#divider:hover::after, #divider.dragging::after { background: var(--divider-hover); }
+body.dragging { user-select: none; }
+body.dragging iframe, body.dragging .pane { pointer-events: none; }
 
 .page-inner, .page {
   max-width: 760px; margin: 0 auto;
   padding: 64px 48px 40vh;
 }
 
+/* ---------- Source editor: a plain text editor filling its pane ---------- */
+#editor-pane { overflow: hidden; background: var(--editor-bg); }
+#editor {
+  display: block; width: 100%; height: 100%; margin: 0;
+  border: 0; outline: 0; resize: none; overflow: auto;
+  padding: 20px 24px; background: var(--editor-bg); color: var(--editor-fg);
+  caret-color: var(--accent);
+  font-family: "JetBrains Mono", "Fira Code", "SFMono-Regular", "Noto Sans Mono", "DejaVu Sans Mono", monospace;
+  font-size: 14px; line-height: 1.65; tab-size: 2;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+#editor::placeholder { color: var(--muted); opacity: 0.8; }
+
 /* ---------- Modes ---------- */
 html[data-mode="source"] #page-pane { display: none; }
 html[data-mode="page"] #editor-pane { display: none; }
 html[data-mode="split"] #divider { display: block; }
-html[data-mode="split"] #page-pane { background: var(--pane-alt); }
+html[data-mode="split"] #editor-pane { flex: 0 0 var(--split); }
 html[data-mode="split"] .page-inner { padding-left: 40px; padding-right: 40px; }
+
+/* ---------- Split layouts: editor left / right / top / bottom ---------- */
+html[data-layout="lr"] #workspace { flex-direction: row; }
+html[data-layout="rl"] #workspace { flex-direction: row-reverse; }
+html[data-layout="tb"] #workspace { flex-direction: column; }
+html[data-layout="bt"] #workspace { flex-direction: column-reverse; }
+html[data-layout="lr"] #divider, html[data-layout="rl"] #divider { width: 1px; cursor: col-resize; }
+html[data-layout="tb"] #divider, html[data-layout="bt"] #divider { height: 1px; cursor: row-resize; }
+html[data-layout="lr"] #divider::after, html[data-layout="rl"] #divider::after { left: -3px; right: -3px; }
+html[data-layout="tb"] #divider::after, html[data-layout="bt"] #divider::after { top: -3px; bottom: -3px; }
+html[data-layout="tb"] .page-inner, html[data-layout="bt"] .page-inner { padding-top: 32px; }
 
 /* ---------- WYSIWYG page ---------- */
 #page { outline: none; caret-color: var(--accent); min-height: 40vh; cursor: text; }

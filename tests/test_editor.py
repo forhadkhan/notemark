@@ -184,6 +184,56 @@ def build_cases():
     case("source mode hides the page", "Notemark.setMode('source'); document.documentElement.dataset.mode",
          lambda o: o == "source")
 
+    # --- Source pane fills its space; split layouts --------------------------
+    case("source editor fills its pane",
+         "var ed = document.getElementById('editor'), pane = document.getElementById('editor-pane');"
+         " var e = ed.getBoundingClientRect(), p = pane.getBoundingClientRect();"
+         " (Math.abs(e.width - p.width) < 2) + '|' + (Math.abs(e.height - p.height) < 2) + '|' + (e.width > 400)",
+         lambda o: o == "true|true|true")
+    case("source editor is monospace and theme-coloured",
+         "var cs = getComputedStyle(document.getElementById('editor'));"
+         " Notemark.setTheme('dark'); var d = getComputedStyle(document.getElementById('editor')).backgroundColor;"
+         " Notemark.setTheme('light'); var l = getComputedStyle(document.getElementById('editor')).backgroundColor;"
+         " /mono/i.test(cs.fontFamily) + '|' + (d !== l)",
+         lambda o: o == "true|true")
+    case("split puts the editor left and the preview right",
+         "Notemark.setMode('split'); Notemark.setLayout('lr');"
+         " var e = document.getElementById('editor-pane').getBoundingClientRect(),"
+         " p = document.getElementById('page-pane').getBoundingClientRect();"
+         " (e.right <= p.left + 1) + '|' + (Math.abs(e.width - p.width) < 4) + '|' + (p.width > 300)",
+         lambda o: o == "true|true|true")
+    case("layout rl swaps the panes",
+         "Notemark.setLayout('rl');"
+         " document.getElementById('page-pane').getBoundingClientRect().right <="
+         " document.getElementById('editor-pane').getBoundingClientRect().left + 1",
+         lambda o: o == "true")
+    case("layout tb stacks editor above preview",
+         "Notemark.setLayout('tb');"
+         " var e = document.getElementById('editor-pane').getBoundingClientRect(),"
+         " p = document.getElementById('page-pane').getBoundingClientRect();"
+         " (e.bottom <= p.top + 1) + '|' + (Math.abs(e.width - p.width) < 2) + '|' + (e.height > 100 && p.height > 100)",
+         lambda o: o == "true|true|true")
+    case("layout bt puts the editor below",
+         "Notemark.setLayout('bt');"
+         " document.getElementById('page-pane').getBoundingClientRect().bottom <="
+         " document.getElementById('editor-pane').getBoundingClientRect().top + 1",
+         lambda o: o == "true")
+    case("setSplit resizes the panes and clamps",
+         "Notemark.setLayout('lr'); Notemark.setSplit(30);"
+         " var w = document.getElementById('workspace').getBoundingClientRect().width,"
+         " e = document.getElementById('editor-pane').getBoundingClientRect().width;"
+         " Notemark.setSplit(2); var c = document.getElementById('editor-pane').getBoundingClientRect().width;"
+         " (Math.abs(e / w - 0.30) < 0.02) + '|' + (Math.abs(c / w - 0.15) < 0.02)",
+         lambda o: o == "true|true")
+    case("dragging the divider resizes and reports the ratio",
+         "var dv = document.getElementById('divider'), r = document.getElementById('workspace').getBoundingClientRect();"
+         " dv.dispatchEvent(new MouseEvent('mousedown', {bubbles: true, button: 0}));"
+         " document.dispatchEvent(new MouseEvent('mousemove', {clientX: r.left + r.width * 0.65, clientY: r.top + 10}));"
+         " document.dispatchEvent(new MouseEvent('mouseup'));"
+         " var e = document.getElementById('editor-pane').getBoundingClientRect().width;"
+         " Notemark.setMode('page'); Math.abs(e / r.width - 0.65) < 0.02",
+         lambda o: o == "true")
+
     # --- Safety --------------------------------------------------------------
     case("script tags in Markdown are stripped",
          "Notemark.setMode('page');"

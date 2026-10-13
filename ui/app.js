@@ -15,8 +15,9 @@
   const html = document.documentElement;
   const editor = document.getElementById("editor");
   const page = document.getElementById("page");
-  const editorPane = document.getElementById("editor-pane");
   const pagePane = document.getElementById("page-pane");
+  const workspace = document.getElementById("workspace");
+  const divider = document.getElementById("divider");
 
   let mode = "page";
   let savedText = "";
@@ -24,6 +25,8 @@
   let syncTimer = null;
   let pageDirty = false;   // page DOM has edits not yet converted into #editor
   let syncing = false;
+  let syncEnabled = true;   // split mode: keep the two panes scrolled together
+  let resizing = false;
 
   // ---------- Host bridge ----------
   function send(msg) {
@@ -161,7 +164,6 @@
     if (md && !md.endsWith("\n")) md += "\n";
     if (!md.trim()) md = "";
     editor.value = md;
-    autogrow(editor);
     pageDirty = false;
   }
 
@@ -189,11 +191,6 @@
 
   // ---------- Source editor ----------
   const LIST_LINE_RE = /^(\s*)([-*+]|\d+[.)])(\s+)(\[[ xX]\]\s+)?(.*)$/;
-
-  function autogrow(ta) {
-    ta.style.height = "auto";
-    ta.style.height = ta.scrollHeight + "px";
-  }
 
   function insertTextTA(ta, str) {
     ta.focus();
@@ -273,7 +270,6 @@
   }
 
   function onSourceInput() {
-    autogrow(editor);
     if (mode === "split") {
       clearTimeout(renderTimer);
       renderTimer = setTimeout(renderPage, 120);
@@ -647,6 +643,42 @@
     requestAnimationFrame(() => { syncing = false; });
   }
 
+  // ---------- Split layout: divider drag and cursor position ----------
+  function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
+
+  function startResize(ev) {
+    if (ev.button !== 0) return;
+    ev.preventDefault();
+    resizing = true;
+    divider.classList.add("dragging");
+    document.body.classList.add("dragging");
+  }
+
+  function onResize(ev) {
+    if (!resizing) return;
+    const r = workspace.getBoundingClientRect();
+    const layout = html.dataset.layout;
+    const horizontal = layout === "lr" || layout === "rl";
+    let pct = horizontal ? (ev.clientX - r.left) / r.width * 100 : (ev.clientY - r.top) / r.height * 100;
+    if (layout === "rl" || layout === "bt") pct = 100 - pct;   // editor sits on the far side
+    api.setSplit(pct);
+  }
+
+  function stopResize() {
+    if (!resizing) return;
+    resizing = false;
+    divider.classList.remove("dragging");
+    document.body.classList.remove("dragging");
+    send({ type: "split", pct: parseFloat(workspace.style.getPropertyValue("--split")) });
+  }
+
+  function reportCursor() {
+    if (mode === "page") return;
+    const before = editor.value.slice(0, editor.selectionStart);
+    const nl = before.lastIndexOf("\n");
+    send({ type: "cursor", line: before.split("\n").length, col: before.length - nl });
+  }
+
   // ---------- Public API for the host ----------
   const api = {
     init(opts) {
@@ -654,16 +686,17 @@
       document.execCommand("defaultParagraphSeparator", false, "p");
       document.execCommand("styleWithCSS", false, "false");
       api.setTheme(opts.theme || "light");
+      api.setLayout(opts.layout || "lr");
+      api.setSplit(opts.split || 50);
+      syncEnabled = opts.sync !== false;
       api.setMode(opts.mode || "page", true);
-      autogrow(editor);
     },
     load(text) {
       editor.value = text || "";
       savedText = editor.value;
       pageDirty = false;
-      autogrow(editor);
       editor.setSelectionRange(0, 0);
-      editorPane.scrollTop = 0;
+      editor.scrollTop = 0;
       pagePane.scrollTop = 0;
       if (mode !== "source") {
         renderPage();
@@ -694,6 +727,12 @@
         body.innerHTML + "\n</article>\n</body>\n</html>\n";
       send({ type: "content", text: doc });
     },
+    setLayout(layout) {
+      if (!["lr", "rl", "tb", "bt"].includes(layout)) return;
+      html.dataset.layout = layout;
+    },
+    setSplit(pct) { workspace.style.setProperty("--split", clamp(pct, 15, 85) + "%"); },
+    setSync(on) { syncEnabled = !!on; },
     setTheme(theme) { html.dataset.theme = theme === "dark" ? "dark" : "light"; },
     setMode(next, quiet) {
       if (!["page", "source", "split"].includes(next)) return;
@@ -701,7 +740,7 @@
       mode = next;
       html.dataset.mode = mode;
       if (mode !== "source") renderPage();
-      if (mode === "source") { autogrow(editor); editor.focus(); }
+      if (mode === "source") editor.focus();
       else if (mode === "page") page.focus();
       if (!quiet) send({ type: "mode", mode });
     },
@@ -713,8 +752,13 @@
   // ---------- Wiring ----------
   editor.addEventListener("input", onSourceInput);
   editor.addEventListener("keydown", onSourceKeydown);
-  editorPane.addEventListener("scroll", () => { if (mode === "split") syncScroll(editorPane, pagePane); });
-  pagePane.addEventListener("scroll", () => { if (mode === "split") syncScroll(pagePane, editorPane); });
+  editor.addEventListener("scroll", () => { if (mode === "split" && syncEnabled) syncScroll(editor, pagePane); });
+  pagePane.addEventListener("scroll", () => { if (mode === "split" && syncEnabled) syncScroll(pagePane, editor); });
+  for (const ev of ["keyup", "click", "input", "focus"]) editor.addEventListener(ev, reportCursor);
+  divider.addEventListener("mousedown", startResize);
+  divider.addEventListener("dblclick", () => { api.setSplit(50); send({ type: "split", pct: 50 }); });
+  document.addEventListener("mousemove", onResize);
+  document.addEventListener("mouseup", stopResize);
   pagePane.addEventListener("mousedown", onPagePaneMousedown);
   page.addEventListener("beforeinput", onPageBeforeInput);
   page.addEventListener("keydown", onPageKeydown);
@@ -723,14 +767,5 @@
   page.addEventListener("click", onPageClick);
   page.addEventListener("change", onPageChange);
   page.addEventListener("blur", () => { syncFromPage(); notifyChange(); });
-  window.addEventListener("resize", () => autogrow(editor));
-  editorPane.addEventListener("mousedown", ev => {
-    if (ev.target === editorPane || ev.target.classList.contains("page-inner")) {
-      ev.preventDefault();
-      editor.focus();
-      editor.setSelectionRange(editor.value.length, editor.value.length);
-    }
-  });
-
   send({ type: "ready" });
 })();

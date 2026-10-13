@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light" data-mode="page">
+<html lang="en" data-theme="light" data-mode="page" data-layout="lr">
 <head>
 <meta charset="utf-8">
 <title>Notemark</title>
@@ -8,12 +8,10 @@
 <body>
   <div id="workspace">
     <section id="editor-pane" class="pane">
-      <div class="page-inner">
-        <textarea id="editor" spellcheck="true" autocomplete="off" autocapitalize="off"
-                  placeholder="Markdown source"></textarea>
-      </div>
+      <textarea id="editor" spellcheck="false" autocomplete="off" autocapitalize="off"
+                placeholder="Markdown source"></textarea>
     </section>
-    <div id="divider" aria-hidden="true"></div>
+    <div id="divider" role="separator" title="Drag to resize, double-click to reset"></div>
     <section id="page-pane" class="pane">
       <article id="page" class="page-inner prose" contenteditable="true" spellcheck="true" data-placeholder="Start writing… Markdown shortcuts work: # heading, - list, [] task, > quote, ``` code"></article>
     </section>

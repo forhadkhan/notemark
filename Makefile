@@ -5,6 +5,7 @@
 #   make install             install into $(DESTDIR)$(PREFIX)
 #   make deb appimage tarball
 #   make dist                build all three release artefacts
+#   make pages               publish docs/ and the signed apt repo to gh-pages (PUSH=1 to push)
 #   make clean
 
 APP     := notemark
@@ -18,7 +19,7 @@ DATADIR := $(DESTDIR)$(PREFIX)/share
 DOCDIR  := $(DATADIR)/doc/$(APP)
 ICONDIR := $(DATADIR)/icons/hicolor/scalable/apps
 
-.PHONY: all run test install uninstall deb appimage tarball dist clean version
+.PHONY: all run test install uninstall deb appimage tarball dist clean version pages
 
 all: dist
 
@@ -62,6 +63,9 @@ tarball:
 dist: deb tarball appimage
 	@echo
 	@ls -lh dist/
+
+pages: deb
+	packaging/publish-pages.sh $(if $(PUSH),--push)
 
 clean:
 	rm -rf build dist

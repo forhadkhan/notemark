@@ -1,7 +1,7 @@
 # Notemark - build, install and packaging
 #
 #   make run                 launch from the source tree
-#   make test                run the editor test suite (needs an X display)
+#   make test                run the editor and keyboard tests (need an X display)
 #   make install             install into $(DESTDIR)$(PREFIX)
 #   make deb appimage tarball
 #   make dist                build all three release artefacts
@@ -29,7 +29,8 @@ run:
 	@python3 notemark.py $(FILE)
 
 test:
-	@python3 tests/test_editor.py
+	@WEBKIT_DISABLE_COMPOSITING_MODE=1 python3 tests/test_editor.py
+	@python3 tests/test_keys.py
 
 install:
 	install -d $(LIBDIR) $(LIBDIR)/ui $(LIBDIR)/ui/vendor

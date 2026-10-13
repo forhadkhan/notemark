@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notemark: a Notion-style Markdown editor for Linux</title>
+<meta name="description" content="Notemark is a lightweight, Notion-style Markdown editor for Linux. The rendered page is the editor, and your notes stay as plain .md files. GTK 3, WebKitGTK and Python. No Electron, no accounts, no sync.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Notemark: a Notion-style Markdown editor for Linux">
+<meta property="og:description" content="Type into formatted text, keep plain .md files. No Electron, no accounts, no sync.">
+<meta property="og:url" content="https://forhadkhan.github.io/notemark/">
+<meta property="og:image" content="https://forhadkhan.github.io/notemark/assets/logo.svg">
+<meta name="twitter:card" content="summary">
+<link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+<link rel="stylesheet" href="style.css">
+<script src="site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  </defs>
+</svg>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#top"><img src="assets/logo.svg" alt="" width="28" height="28"><span>Notemark</span></a>
+    <nav aria-label="Primary">
+      <ul>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#screenshots">Screenshots</a></li>
+        <li><a href="#install">Install</a></li>
+        <li><a href="#usage">Usage</a></li>
+        <li><a href="#build">Build</a></li>
+        <li><a href="#about">About</a></li>
+      </ul>
+    </nav>
+    <button class="icon-btn" id="theme-toggle" type="button" aria-label="Switch to dark theme" title="Toggle theme">
+      <svg class="ico ico-moon" aria-hidden="true"><use href="#i-moon"/></svg>
+      <svg class="ico ico-sun" aria-hidden="true"><use href="#i-sun"/></svg>
+    </button>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero" id="top">
+    <div class="wrap">
+      <img class="hero-logo" src="assets/logo.svg" alt="Notemark logo: an orange tile with a white page and a Markdown heading mark" width="96" height="96">
+      <h1>Notemark</h1>
+      <p class="lede">A Notion-style Markdown editor for Linux. The rendered page is the editor: you type into formatted text, Markdown shortcuts convert as you type, and your notes stay as plain <code>.md</code> files.</p>
+      <p class="sub">No Electron, no accounts, no sync. A single Python file driving GTK 3 and WebKitGTK, and the installed package is under 250 KB.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="#install">Install <svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+        <a class="btn" href="https://github.com/forhadkhan/notemark">GitHub</a>
+      </div>
+      <p class="meta">Version 0.2.0 &middot; MIT licence &middot; Debian, Ubuntu, AppImage and portable tarball</p>
+    </div>
+  </section>
+
+  <section id="screenshots" aria-labelledby="h-shots">
+    <div class="wrap">
+      <h2 id="h-shots">Screenshots</h2>
+      <div class="shots">
+        <figure>
+          <img src="assets/light-page.png" alt="Notemark in page mode with the light theme: a formatted note with headings and lists" width="1106" height="859">
+          <figcaption>Page mode, light theme</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/dark-page-editing.png" alt="Notemark in page mode with the dark theme, editing a block of a note" width="1000" height="720">
+          <figcaption>Page mode, dark theme</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" aria-labelledby="h-features">
+    <div class="wrap">
+      <h2 id="h-features">Features</h2>
+      <ul class="cards">
+        <li><h3>Page mode</h3><p>A WYSIWYG editor over Markdown. Headings stay headings while you write, and nothing re-renders or shifts under the cursor.</p></li>
+        <li><h3>Markdown shortcuts</h3><p><code># </code> for a heading, <code>- </code> for a bullet, <code>1. </code> for a numbered item, <code>[] </code> for a task, <code>&gt; </code> for a quote, <code>```</code> for code and <code>---</code> for a rule. Enter on an empty line leaves a list, quote or code block.</p></li>
+        <li><h3>Source and split modes</h3><p>Edit raw Markdown, or both views side by side with two-way synchronisation. The editor can sit left, right, above or below the page.</p></li>
+        <li><h3>Tabs</h3><p>Every file opens in its own tab and keeps its own view, cursor, scroll position and undo history. Drag to reorder, middle-click to close, right-click for more.</p></li>
+        <li><h3>CSV and TSV tables</h3><p>Open as an editable table: add, delete and move rows and columns, sort and filter, paste a block of cells, and switch to the raw text.</p></li>
+        <li><h3>Settings</h3><p>Press <kbd>Ctrl+,</kbd> for the theme, source editor size, default view, split layout, the status bar, and reopening your files on the next launch.</p></li>
+        <li><h3>Light and dark themes</h3><p>Follows the desktop colour scheme on first launch, and remembers your choice after that.</p></li>
+        <li><h3>Zoom</h3><p>From 50 to 300 percent, with the toolbar, keyboard, or Ctrl and the scroll wheel.</p></li>
+        <li><h3>Plain files</h3><p>Clickable task checkboxes rewrite the Markdown. Export to a self-contained HTML file. Word and character count, an unsaved-changes guard, and registration as a handler for <code>.md</code> files.</p></li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="install" aria-labelledby="h-install">
+    <div class="wrap">
+      <h2 id="h-install">Install</h2>
+      <p class="intro">Notemark needs Python 3.8 or newer, PyGObject, GTK 3 and WebKitGTK 4.1. Every mainstream desktop Linux ships these, and the Debian package pulls them in automatically.</p>
+
+      <div class="tabs" data-tabs>
+        <div class="tablist" role="tablist" aria-label="Installation method">
+          <button role="tab" type="button" id="tab-apt" aria-controls="panel-apt" aria-selected="true">APT repository <span class="tag">Recommended</span></button>
+          <button role="tab" type="button" id="tab-deb" aria-controls="panel-deb" aria-selected="false" tabindex="-1">.deb</button>
+          <button role="tab" type="button" id="tab-appimage" aria-controls="panel-appimage" aria-selected="false" tabindex="-1">AppImage</button>
+          <button role="tab" type="button" id="tab-tar" aria-controls="panel-tar" aria-selected="false" tabindex="-1">Portable tarball</button>
+        </div>
+
+        <div class="panel" role="tabpanel" id="panel-apt" aria-labelledby="tab-apt">
+          <h3>APT repository (Debian, Ubuntu, Mint, Pop!_OS)</h3>
+          <p>Add the signing key and the repository, then install. Updates then arrive with your normal system updates.</p>
+          <div class="code"><button class="copy" type="button" aria-label="Copy commands"><svg class="ico ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="ico ico-check" aria-hidden="true"><use href="#i-check"/></svg><span class="copied" aria-hidden="true">Copied</span></button><pre><code>curl -fsSL https://forhadkhan.github.io/notemark/apt/notemark.gpg | sudo tee /usr/share/keyrings/notemark.gpg &gt; /dev/null
+echo "deb [signed-by=/usr/share/keyrings/notemark.gpg] https://forhadkhan.github.io/notemark/apt stable main" | sudo tee /etc/apt/sources.list.d/notemark.list
+sudo apt update &amp;&amp; sudo apt install notemark</code></pre></div>
+          <p>Update later:</p>
+          <div class="code"><button class="copy" type="button" aria-label="Copy command"><svg class="ico ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="ico ico-check" aria-hidden="true"><use href="#i-check"/></svg><span class="copied" aria-hidden="true">Copied</span></button><pre><code>sudo apt update &amp;&amp; sudo apt upgrade</code></pre></div>
+          <p>Remove it, then delete the two files you added:</p>
+          <div class="code"><button class="copy" type="button" aria-label="Copy commands"><svg class="ico ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="ico ico-check" aria-hidden="true"><use href="#i-check"/></svg><span class="copied" aria-hidden="true">Copied</span></button><pre><code>sudo apt remove notemark
+sudo rm /etc/apt/sources.list.d/notemark.list /usr/share/keyrings/notemark.gpg</code></pre></div>
+        </div>
+
+        <div class="panel" role="tabpanel" id="panel-deb" aria-labelledby="tab-deb" hidden>
+          <h3>.deb from GitHub releases</h3>
+          <p>Download <code>notemark_&lt;version&gt;_all.deb</code> from the <a href="https://github.com/forhadkhan/notemark/releases/latest">latest release</a> and install it:</p>
+          <div class="code"><button class="copy" type="button" aria-label="Copy command"><svg class="ico ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="ico ico-check" aria-hidden="true"><use href="#i-check"/></svg><span class="copied" aria-hidden="true">Copied</span></button><pre><code>sudo apt install ./notemark_0.2.0_all.deb</code></pre></div>
+        </div>
+
+        <div class="panel" role="tabpanel" id="panel-appimage" aria-labelledby="tab-appimage" hidden>
+          <h3>AppImage (any distribution, no installation)</h3>
+          <p>Download <code>Notemark-&lt;version&gt;-x86_64.AppImage</code> from the <a href="https://github.com/forhadkhan/notemark/releases/latest">latest release</a>, make it executable and run it:</p>
+          <div class="code"><button class="copy" type="button" aria-label="Copy commands"><svg class="ico ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="ico ico-check" aria-hidden="true"><use href="#i-check"/></svg><span class="copied" aria-hidden="true">Copied</span></button><pre><code>chmod +x Notemark-0.2.0-x86_64.AppImage
+./Notemark-0.2.0-x86_64.AppImage</code></pre></div>
+          <p>The AppImage carries Notemark itself and uses GTK, WebKitGTK and PyGObject from the host system. If they are missing it prints the exact package names to install for your distribution.</p>
+        </div>
+
+        <div class="panel" role="tabpanel" id="panel-tar" aria-labelledby="tab-tar" hidden>
+          <h3>Portable tarball (no root, or a portable tree)</h3>
+          <p>Download <code>notemark-&lt;version&gt;-linux.tar.gz</code> from the <a href="https://github.com/forhadkhan/notemark/releases/latest">latest release</a>. It runs in place or installs without root:</p>
+          <div class="code"><button class="copy" type="button" aria-label="Copy commands"><svg class="ico ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="ico ico-check" aria-hidden="true"><use href="#i-check"/></svg><span class="copied" aria-hidden="true">Copied</span></button><pre><code>tar -xzf notemark-0.2.0-linux.tar.gz
+cd notemark-0.2.0
+./notemark sample.md          # run without installing
+./install.sh                  # or install into ~/.local
+sudo ./install.sh /usr/local  # or system-wide</code></pre></div>
+          <p>Run <code>./uninstall.sh</code> with the same prefix to remove it.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="usage" aria-labelledby="h-usage">
+    <div class="wrap">
+      <h2 id="h-usage">Usage</h2>
+      <p class="intro">Open files from the toolbar (pick several at once), or pass them on the command line:</p>
+      <div class="code"><button class="copy" type="button" aria-label="Copy command"><svg class="ico ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="ico ico-check" aria-hidden="true"><use href="#i-check"/></svg><span class="copied" aria-hidden="true">Copied</span></button><pre><code>notemark notes.md data.csv</code></pre></div>
+
+      <div class="grid2">
+        <div>
+          <h3>Tabs</h3>
+          <p>Every file opens in its own tab with its own view, cursor, scroll position and undo history. Reorder by dragging, close with the button, middle-click or <kbd>Ctrl+W</kbd>, and switch with <kbd>Ctrl+Tab</kbd> or <kbd>Alt+1</kbd> to <kbd>Alt+9</kbd>. A tab with unsaved changes asks before it closes. Open a file or move a tab into a new window (<kbd>Ctrl+Shift+N</kbd>) to see two side by side.</p>
+        </div>
+        <div>
+          <h3>CSV and TSV</h3>
+          <p>CSV and TSV files open as an editable table with sorting, filtering, row and column editing, pasting a block of cells and a raw-text view. Use &ldquo;New CSV Table&rdquo; in the menu to start one.</p>
+        </div>
+        <div>
+          <h3>Settings</h3>
+          <p>Press <kbd>Ctrl+,</kbd>. Settings are stored in <code>~/.config/notemark/settings.json</code>, and the files open when you quit in <code>~/.config/notemark/session.json</code>. Only saved files are reopened; an untitled tab is not.</p>
+        </div>
+      </div>
+
+      <h3 id="h-keys">Keyboard shortcuts</h3>
+      <div class="table-wrap" tabindex="0" role="region" aria-labelledby="h-keys">
+        <table>
+          <thead><tr><th scope="col">Shortcut</th><th scope="col">Action</th></tr></thead>
+          <tbody>
+            <tr><td><kbd>Ctrl+N</kbd> or <kbd>Ctrl+T</kbd></td><td>New tab</td></tr>
+            <tr><td><kbd>Ctrl+Shift+N</kbd></td><td>New window</td></tr>
+            <tr><td><kbd>Ctrl+O</kbd>, <kbd>Ctrl+S</kbd></td><td>Open, save</td></tr>
+            <tr><td><kbd>Ctrl+Shift+S</kbd></td><td>Save as</td></tr>
+            <tr><td><kbd>Ctrl+W</kbd></td><td>Close tab</td></tr>
+            <tr><td><kbd>Ctrl+Tab</kbd>, <kbd>Ctrl+Shift+Tab</kbd></td><td>Next, previous tab</td></tr>
+            <tr><td><kbd>Alt+1</kbd> to <kbd>Alt+9</kbd></td><td>Go to a tab (9 is the last)</td></tr>
+            <tr><td><kbd>Ctrl+Shift+C</kbd></td><td>Copy the file path</td></tr>
+            <tr><td><kbd>Ctrl+,</kbd></td><td>Settings</td></tr>
+            <tr><td><kbd>Ctrl+Z</kbd>, <kbd>Ctrl+Shift+Z</kbd>, <kbd>Ctrl+Y</kbd></td><td>Undo, redo</td></tr>
+            <tr><td><kbd>Ctrl+1</kbd>, <kbd>Ctrl+2</kbd>, <kbd>Ctrl+3</kbd></td><td>Page, source, split mode</td></tr>
+            <tr><td><kbd>Ctrl+E</kbd></td><td>Toggle page and source</td></tr>
+            <tr><td><kbd>Ctrl+Shift+L</kbd></td><td>Toggle dark mode</td></tr>
+            <tr><td><kbd>Ctrl++</kbd>, <kbd>Ctrl+-</kbd>, <kbd>Ctrl+0</kbd></td><td>Zoom in, out, reset</td></tr>
+            <tr><td><kbd>Ctrl</kbd> and scroll</td><td>Zoom</td></tr>
+            <tr><td><kbd>Ctrl+B</kbd>, <kbd>Ctrl+I</kbd>, <kbd>Ctrl+`</kbd></td><td>Bold, italic, inline code</td></tr>
+            <tr><td><kbd>Ctrl+K</kbd>, <kbd>Ctrl+Shift+X</kbd></td><td>Link, strikethrough</td></tr>
+            <tr><td><kbd>Tab</kbd>, <kbd>Shift+Tab</kbd></td><td>Indent, outdent a list item</td></tr>
+            <tr><td><kbd>Shift+Enter</kbd></td><td>Line break within a block</td></tr>
+            <tr><td><kbd>Ctrl</kbd> and click</td><td>Open a link</td></tr>
+            <tr><td><kbd>Ctrl+Q</kbd></td><td>Quit</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="build" aria-labelledby="h-build">
+    <div class="wrap">
+      <h2 id="h-build">Build from source and test</h2>
+      <p class="intro">Clone the repository and run it from the source tree:</p>
+      <div class="code"><button class="copy" type="button" aria-label="Copy commands"><svg class="ico ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="ico ico-check" aria-hidden="true"><use href="#i-check"/></svg><span class="copied" aria-hidden="true">Copied</span></button><pre><code>git clone https://github.com/forhadkhan/notemark.git
+cd notemark
+make run FILE=sample.md</code></pre></div>
+      <p>Runtime dependencies, by distribution:</p>
+      <div class="table-wrap" tabindex="0" role="region" aria-label="Runtime dependencies by distribution">
+        <table>
+          <thead><tr><th scope="col">Distribution</th><th scope="col">Command</th></tr></thead>
+          <tbody>
+            <tr><td>Debian, Ubuntu</td><td><code>sudo apt install python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1</code></td></tr>
+            <tr><td>Fedora</td><td><code>sudo dnf install python3-gobject gtk3 webkit2gtk4.1</code></td></tr>
+            <tr><td>Arch</td><td><code>sudo pacman -S python-gobject gtk3 webkit2gtk-4.1</code></td></tr>
+            <tr><td>openSUSE</td><td><code>sudo zypper install python3-gobject gtk3 libwebkit2gtk-4_1-0</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>Packages</h3>
+      <div class="code"><button class="copy" type="button" aria-label="Copy commands"><svg class="ico ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="ico ico-check" aria-hidden="true"><use href="#i-check"/></svg><span class="copied" aria-hidden="true">Copied</span></button><pre><code>make deb        # dist/notemark_&lt;version&gt;_all.deb
+make appimage   # dist/Notemark-&lt;version&gt;-x86_64.AppImage
+make tarball    # dist/notemark-&lt;version&gt;-linux.tar.gz
+make dist       # all three</code></pre></div>
+      <p>Building the Debian package needs <code>dpkg-deb</code>. Building the AppImage downloads <code>appimagetool</code> into <code>build/tools</code> on first use.</p>
+      <h3>Tests</h3>
+      <div class="code"><button class="copy" type="button" aria-label="Copy command"><svg class="ico ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="ico ico-check" aria-hidden="true"><use href="#i-check"/></svg><span class="copied" aria-hidden="true">Copied</span></button><pre><code>make test</code></pre></div>
+      <p>The suite loads the editor into an offscreen WebKit view and drives it the way a person would, then asserts on the Markdown that comes back out. An X display is required.</p>
+    </div>
+  </section>
+
+  <section id="changelog" aria-labelledby="h-changes">
+    <div class="wrap">
+      <h2 id="h-changes">Changelog</h2>
+      <p class="intro">Version 0.2.0 added tabs, new windows, CSV and TSV tables, a Settings dialog, split layouts and session restore. Read the full history in the <a href="https://github.com/forhadkhan/notemark/blob/main/CHANGELOG.md">changelog</a> or on the <a href="https://github.com/forhadkhan/notemark/releases">releases page</a>.</p>
+    </div>
+  </section>
+
+  <section id="about" aria-labelledby="h-about">
+    <div class="wrap">
+      <h2 id="h-about">About</h2>
+      <div class="grid2">
+        <div>
+          <h3>Author</h3>
+          <p><strong>Forhad Khan</strong></p>
+          <p><a href="https://github.com/forhadkhan">github.com/forhadkhan</a><br><a href="https://forhadkhan.com">forhadkhan.com</a></p>
+        </div>
+        <div>
+          <h3>Licence</h3>
+          <p>MIT. See <a href="https://github.com/forhadkhan/notemark/blob/main/LICENSE">LICENSE</a>. Bundled libraries, all MIT licensed: <a href="https://github.com/markedjs/marked">marked</a>, <a href="https://github.com/mixmark-io/turndown">Turndown</a> and <a href="https://github.com/mixmark-io/turndown-plugin-gfm">turndown-plugin-gfm</a>.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <p>&copy; 2026 Forhad Khan. Released under the MIT licence.</p>
+    <p><a href="https://github.com/forhadkhan/notemark">Source</a> &middot; <a href="https://github.com/forhadkhan/notemark/releases">Releases</a> &middot; <a href="https://github.com/forhadkhan/notemark/issues">Issues</a></p>
+  </div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,43 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Architectures: all
+Codename: stable
+Components: main
+Date: Tue, 13 Oct 2026 17:06:23 +0000
+Description: Notemark: a Notion-style Markdown editor
+Label: Notemark
+Origin: Notemark
+Suite: stable
+MD5Sum:
+ 37be3a7f8cf860b3752b718db6762f7b              879 main/binary-all/Packages
+ 4bdb9917d2ffab20c2cc02a00ca7c3a1              586 main/binary-all/Packages.gz
+ c73276faade003d97454cf34a9c83c58              676 main/binary-all/Packages.xz
+SHA1:
+ abbe1b6bb460204968e279b47f040a81f7b33262              879 main/binary-all/Packages
+ 7fad6538657b1b640edc155a3e5cb235ba1cb282              586 main/binary-all/Packages.gz
+ 55489e7ceb1c6c7db9648c1b31dd8bf2217a2c39              676 main/binary-all/Packages.xz
+SHA256:
+ 1bf373d647eb02aa467e95527831a494c23f056bc3662938b13ef494f823cc9b              879 main/binary-all/Packages
+ f003213db53896d2f1dca45050021ac1db3cd26f0142a9dc961d3a86d221ba93              586 main/binary-all/Packages.gz
+ aac8cf426f5b578f7e78ea62b99daa4c53b4b2a4480eb69452b6dadbecd752fa              676 main/binary-all/Packages.xz
+SHA512:
+ 2e3548859c834196861986b081802e3aaa53f0970999e94d6ce01386effbd2a54fff31b94f9493db879536189c65475862cdd75e8eb1d70b6e70c94f66ada71a              879 main/binary-all/Packages
+ 6cc4e488f6978079dbaa38db84184ab413659252c485406b574535a3aae60e8070bafbc355bfdbc3f89117a91e8f06c7fabbdf2f0c2083951724502eb9f67001              586 main/binary-all/Packages.gz
+ 0ab605e36eb2c819b4e1bcdebe435099b85226e7348ca85043efa64d743d0c29bff1e504b88175d17d92a05537b145f4dca3e022337464caa6dd115103da4209              676 main/binary-all/Packages.xz
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCgAdFiEEmCOek9H5OiqN81V9sr/ENa8uMEAFAmrOZQ8ACgkQsr/ENa8u
+MEACgA//SNnO/isbbreVfBcQVmCbLknSYGKk4Iqo2wb4SNjUC0F4GESC37uGRi+N
+TyI36jM/lKuWaWM9pQTMV0SbvgUgIPHYzKJETmRTAbHz59cjsIX4RK9a6Z5PL+Pc
+2Epb3Nmjo0nG2zOZc4Jq9kmGtP4sFs5IOO5TeBa8qVsi/qEX2vJTf2E+kj3Ncm82
+7JQg8bjPkdtShytfJDqxQrTTraArYTrioThZKqEBgwxXZtrQc+Eof8B3d64/Jdn5
+piz8hiMRagBKYPFxohLT6hmG3UIbaxlf8myoCTX9p80UBbk7/G4F1YMu7tukGiJE
+6W4zXimLAyI1lSi0aFyu6CBOimh97lk9l0D0lagYzeX3COhgm6IEZa05+Pwc2DhO
+QDnYEQFDhU+obfVBn/AaBwia5hfjRp4DsoySXE8LKKpMDgIhEM3ExIoN9WgXPfZs
+BX4FVnIrwgYwNp6bOc6EqTY485tgyg1AQF5/d0K6wYEGrUpgwl2y/kEBjQEmJ4AW
+IHhDdIud7bO2A0yFMAZKMNqHtGNjSgNxW1/5EJTaKw/DbshMgAIXfoY7r6xdlfu8
+SQgSzommcjPc2TlZRFMDbu889t1ycSpC5f0ADKkiK7n66YW9ARPZtFaM+24W85lk
+wVj9jaNNvvEQA0fT8yMtlfg4Rz+SSKm/6INkrI0SYFPjIshD9lg=
+=w1ef
+-----END PGP SIGNATURE-----

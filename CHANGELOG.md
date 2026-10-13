@@ -35,11 +35,15 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - The Save button uses a floppy-disk icon.
+- New application icon: a blue tile with a page and a Markdown heading mark,
+  legible on light and dark backgrounds.
 - The view (page, source or split) belongs to each tab. New tabs start in the view
   chosen under Settings rather than in whichever one you used last.
 
 ### Fixed
 
+- The dock and app grid showed a generic gear icon on Wayland. The desktop entry
+  is now named `com.forhadkhan.Notemark.desktop` to match the application id.
 - Tab nests a list item in page mode again. It produced a list inside a list that
   Markdown could not express, so the nesting was lost on save.
 - Shift+Tab was ignored in page and source mode and moved the focus out of the

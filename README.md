@@ -1,3 +1,5 @@
+<p align="center"><img src="data/notemark.svg" alt="Notemark logo" width="96"></p>
+
 # Notemark
 
 [![Latest release](https://img.shields.io/github/v/release/forhadkhan/notemark?label=release)](https://github.com/forhadkhan/notemark/releases/latest)

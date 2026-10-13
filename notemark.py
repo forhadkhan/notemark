@@ -1171,6 +1171,7 @@ class NotemarkApp(Gtk.Application):
     def do_startup(self):
         Gtk.Application.do_startup(self)
         GLib.set_application_name(APP_NAME)
+        Gtk.Window.set_default_icon_name("notemark")
         self.settings = load_settings()
         if not os.path.exists(CONFIG_FILE) and system_prefers_dark():
             self.settings["theme"] = "dark"
@@ -1261,6 +1262,7 @@ class NotemarkApp(Gtk.Application):
 
 
 def main():
+    GLib.set_prgname(APP_ID)    # window class and app id must match the desktop file for the dock icon
     app = NotemarkApp()
     return app.run(sys.argv)
 

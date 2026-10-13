@@ -41,14 +41,14 @@ install:
 	sed 's|@LIBDIR@|$(PREFIX)/lib/$(APP)|g' bin/notemark.in > $(BINDIR)/$(APP)
 	chmod 755 $(BINDIR)/$(APP)
 	install -d $(DATADIR)/applications $(ICONDIR) $(DOCDIR)
-	install -m 644 data/$(APP).desktop $(DATADIR)/applications/
+	install -m 644 data/com.forhadkhan.Notemark.desktop $(DATADIR)/applications/
 	install -m 644 data/$(APP).svg $(ICONDIR)/
 	install -m 644 README.md LICENSE CHANGELOG.md $(DOCDIR)/
 	install -m 644 sample.md $(DOCDIR)/
 
 uninstall:
 	rm -rf $(LIBDIR) $(DOCDIR)
-	rm -f $(BINDIR)/$(APP) $(DATADIR)/applications/$(APP).desktop $(ICONDIR)/$(APP).svg
+	rm -f $(BINDIR)/$(APP) $(DATADIR)/applications/com.forhadkhan.Notemark.desktop $(ICONDIR)/$(APP).svg
 
 deb:
 	@packaging/build-deb.sh

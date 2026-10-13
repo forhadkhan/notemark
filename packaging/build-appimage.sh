@@ -50,7 +50,7 @@ exec python3 "$HERE/usr/lib/notemark/notemark.py" "$@"
 APPRUN
 chmod 755 "$APPDIR/AppRun"
 
-cp "$APPDIR/usr/share/applications/$PKG.desktop" "$APPDIR/$PKG.desktop"
+cp "$APPDIR/usr/share/applications/com.forhadkhan.Notemark.desktop" "$APPDIR/com.forhadkhan.Notemark.desktop"
 cp "$APPDIR/usr/share/icons/hicolor/scalable/apps/$PKG.svg" "$APPDIR/$PKG.svg"
 mkdir -p "$APPDIR/usr/share/metainfo"
 

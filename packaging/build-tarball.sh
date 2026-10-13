@@ -35,8 +35,8 @@ mkdir -p "$LIB" "$PREFIX/bin" "$PREFIX/share/applications" \
 cp -r "$SRC/notemark.py" "$SRC/ui" "$LIB/"
 printf '#!/bin/sh\nexec python3 "%s/notemark.py" "$@"\n' "$LIB" > "$PREFIX/bin/notemark"
 chmod 755 "$PREFIX/bin/notemark"
-sed "s|^Exec=notemark|Exec=$PREFIX/bin/notemark|" "$SRC/data/notemark.desktop" \
-  > "$PREFIX/share/applications/notemark.desktop"
+sed "s|^Exec=notemark|Exec=$PREFIX/bin/notemark|" "$SRC/data/com.forhadkhan.Notemark.desktop" \
+  > "$PREFIX/share/applications/com.forhadkhan.Notemark.desktop"
 cp "$SRC/data/notemark.svg" "$PREFIX/share/icons/hicolor/scalable/apps/"
 
 command -v update-desktop-database >/dev/null 2>&1 && \
@@ -58,7 +58,7 @@ set -e
 PREFIX="${1:-$HOME/.local}"
 rm -rf "$PREFIX/lib/notemark"
 rm -f "$PREFIX/bin/notemark" \
-      "$PREFIX/share/applications/notemark.desktop" \
+      "$PREFIX/share/applications/com.forhadkhan.Notemark.desktop" \
       "$PREFIX/share/icons/hicolor/scalable/apps/notemark.svg"
 echo "Notemark removed from $PREFIX"
 UNINSTALL

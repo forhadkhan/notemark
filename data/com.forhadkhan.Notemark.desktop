@@ -10,4 +10,4 @@ Categories=Utility;TextEditor;GTK;
 MimeType=text/markdown;text/x-markdown;text/plain;
 Keywords=markdown;md;notes;editor;viewer;notion;wysiwyg;writing;
 StartupNotify=true
-StartupWMClass=notemark
+StartupWMClass=com.forhadkhan.Notemark

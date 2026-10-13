@@ -13,6 +13,9 @@
 (function () {
   "use strict";
 
+  // WebKitGTK reports Shift+Tab as key "Unidentified" (the key is ISO_Left_Tab); code and keyCode stay right.
+  const isTab = ev => ev.key === "Tab" || ev.code === "Tab" || ev.keyCode === 9;
+
   const html = document.documentElement;
   const editor = document.getElementById("editor");
   const page = document.getElementById("page");
@@ -259,7 +262,7 @@
 
   function onSourceKeydown(ev) {
     const ta = editor, mod = ev.ctrlKey || ev.metaKey;
-    if (ev.key === "Tab") { ev.preventDefault(); indentSelection(ta, ev.shiftKey); return; }
+    if (isTab(ev)) { ev.preventDefault(); indentSelection(ta, ev.shiftKey); return; }
     if (ev.key === "Enter" && !mod && !ev.shiftKey) {
       const { start, text } = lineBounds(ta, ta.selectionStart);
       if (LIST_LINE_RE.test(text.slice(0, ta.selectionStart - start))) { ev.preventDefault(); listEnter(ta); }
@@ -511,12 +514,47 @@
     }
   }
 
+  // Nest or un-nest a list item by moving the <li> itself. The browser's own
+  // "indent" command puts a <ul> straight inside a <ul>, which Markdown cannot say.
+  function indentListItem(li, outdent) {
+    const sel = window.getSelection();
+    // A live Range inside a moved node collapses to its old parent, so keep the plain positions instead.
+    const caret = sel.rangeCount ? [sel.anchorNode, sel.anchorOffset, sel.focusNode, sel.focusOffset] : null;
+    const list = li.parentNode;
+    if (!outdent) {
+      const prev = li.previousElementSibling;
+      if (!prev || prev.nodeName !== "LI") return;          // the first item has nothing to nest under
+      let sub = prev.lastElementChild;
+      if (!sub || !/^(UL|OL)$/.test(sub.nodeName)) {
+        sub = document.createElement(list.nodeName.toLowerCase());
+        prev.appendChild(sub);
+      }
+      sub.appendChild(li);
+    } else {
+      const parent = list.parentNode;
+      if (!parent || parent.nodeName !== "LI") return;      // already at the top level
+      const after = [];
+      for (let n = li.nextElementSibling; n; n = n.nextElementSibling) after.push(n);
+      if (after.length) {                                   // the items below stay below, now inside this one
+        let sub = li.lastElementChild;
+        if (!sub || !/^(UL|OL)$/.test(sub.nodeName)) {
+          sub = document.createElement(list.nodeName.toLowerCase());
+          li.appendChild(sub);
+        }
+        after.forEach(n => sub.appendChild(n));
+      }
+      parent.after(li);
+      if (!list.children.length) list.remove();
+    }
+    if (caret) sel.setBaseAndExtent(...caret);
+  }
+
   function onPageKeydown(ev) {
     const mod = ev.ctrlKey || ev.metaKey;
     const block = selectionBlock();
-    if (ev.key === "Tab") {
+    if (isTab(ev)) {
       ev.preventDefault();
-      if (block && block.nodeName === "LI") document.execCommand(ev.shiftKey ? "outdent" : "indent");
+      if (block && block.nodeName === "LI") { indentListItem(block, ev.shiftKey); scheduleSync(); }
       else if (block && block.nodeName === "PRE") document.execCommand("insertText", false, "  ");
       return;
     }

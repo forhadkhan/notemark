@@ -8,6 +8,9 @@
 
   const DELIMS = [",", ";", "\t", "|"];
 
+  // WebKitGTK reports Shift+Tab as key "Unidentified" (the key is ISO_Left_Tab); code and keyCode stay right.
+  const isTab = ev => ev.key === "Tab" || ev.code === "Tab" || ev.keyCode === 9;
+
   // ---------- Parse / serialise ----------
   function detectDelimiter(text) {
     // Count candidate delimiters on the first non-empty line, outside quotes.
@@ -251,7 +254,7 @@
       const pos = order.indexOf(r);
       if (ev.key === "Enter" && !ev.shiftKey) { const n = order[Math.min(pos + 1, order.length - 1)]; move(n, c); }
       else if (ev.key === "Enter" && ev.shiftKey) { ev.preventDefault(); document.execCommand("insertText", false, "\n"); }
-      else if (ev.key === "Tab") {
+      else if (isTab(ev)) {
         if (ev.shiftKey) { if (c > 0) move(r, c - 1); else if (pos > 0) move(order[pos - 1], width - 1); else ev.preventDefault(); }
         else if (c < width - 1) move(r, c + 1);
         else if (pos < order.length - 1) move(order[pos + 1], 0);

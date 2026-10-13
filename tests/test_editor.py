@@ -47,6 +47,11 @@ window.T = {
   },
   type(str) { for (const ch of str) document.execCommand('insertText', false, ch); },
   enter() { document.execCommand('insertParagraph'); },
+  // WebKitGTK sends Shift+Tab with key "Unidentified"; code and keyCode are what identify it.
+  tab(shift) {
+    const ev = new KeyboardEvent('keydown', {key: shift ? 'Unidentified' : 'Tab', code: 'Tab', keyCode: 9, shiftKey: shift, bubbles: true, cancelable: true});
+    T.page.dispatchEvent(ev);
+  },
   blockTag() {
     let n = getSelection().anchorNode;
     if (n && n.nodeType === 3) n = n.parentNode;
@@ -253,6 +258,19 @@ def build_cases():
          lambda o: o == "3")
     case("Ctrl+Y redoes in the source editor",
          "var ed = document.getElementById('editor'); K(ed, 'y'); ed.value.endsWith('abc')", lambda o: o == "true")
+
+    # --- List indent (Tab / Shift+Tab) ---------------------------------------
+    case("Tab nests a list item under the one above",
+         "Notemark.setMode('page', true); Notemark.load('- a\\n- b\\n'); T.page.focus(); T.caretEnd(T.page.querySelectorAll('li')[1]); "
+         "T.tab(false); " + MD,
+         lambda o: o.startswith("- a\n  - b"))
+    case("the caret stays in the moved item",
+         "T.blockTag()", lambda o: o == "LI")
+    case("Shift+Tab (reported as key 'Unidentified') lifts it back out",
+         "T.tab(true); " + MD, lambda o: o.startswith("- a\n- b"))
+    case("Tab on the first item changes nothing",
+         "Notemark.load('- a\\n- b\\n'); T.caretEnd(T.page.querySelectorAll('li')[0]); T.tab(false); " + MD,
+         lambda o: o.startswith("- a\n- b"))
 
     # --- CSV documents -------------------------------------------------------
     case("CSV parsing handles quotes, embedded delimiters and newlines",

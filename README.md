@@ -4,6 +4,7 @@
 
 [![Latest release](https://img.shields.io/github/v/release/forhadkhan/notemark?label=release)](https://github.com/forhadkhan/notemark/releases/latest)
 [![License](https://img.shields.io/github/license/forhadkhan/notemark?label=licence)](LICENSE)
+[![Documentation](https://img.shields.io/badge/docs-forhadkhan.github.io%2Fnotemark-d9531e)](https://forhadkhan.github.io/notemark/)
 
 A Notion-style Markdown editor for Linux. The rendered page is the editor: you
 type into formatted text, Markdown shortcuts convert as you type, and your notes
@@ -16,7 +17,8 @@ driving GTK 3 and WebKitGTK, and the installed package is under 250 KB.
 
 | You are on | Take |
 | --- | --- |
-| Debian, Ubuntu, Mint, Pop!\_OS | `notemark_<version>_all.deb` |
+| Debian, Ubuntu, Mint, Pop!\_OS, want updates | the [APT repository](#apt-repository-recommended) |
+| Debian, Ubuntu, one-off install | `notemark_<version>_all.deb` |
 | Anything else, no installation | `Notemark-<version>-x86_64.AppImage` |
 | No root access, or prefer a portable tree | `notemark-<version>-linux.tar.gz` |
 
@@ -61,7 +63,24 @@ Notemark needs Python 3.8 or newer, PyGObject, GTK 3 and WebKitGTK 4.1. Every
 mainstream desktop Linux ships these; the Debian package pulls them in
 automatically.
 
-### Debian, Ubuntu and derivatives
+### APT repository (recommended)
+
+Add the signed repository once and Notemark updates with the rest of your
+system. This works on Debian, Ubuntu, Linux Mint, Pop!\_OS and other derivatives.
+
+```bash
+curl -fsSL https://forhadkhan.github.io/notemark/apt/notemark.gpg | sudo tee /usr/share/keyrings/notemark.gpg > /dev/null
+echo "deb [signed-by=/usr/share/keyrings/notemark.gpg] https://forhadkhan.github.io/notemark/apt stable main" | sudo tee /etc/apt/sources.list.d/notemark.list
+sudo apt update && sudo apt install notemark
+```
+
+Update later with `sudo apt update && sudo apt upgrade`. To remove it, run
+`sudo apt remove notemark` and delete `/etc/apt/sources.list.d/notemark.list`
+and `/usr/share/keyrings/notemark.gpg`. The repository is signed with the key
+published at `apt/notemark.asc`, and the package is architecture independent, so
+it installs on any CPU.
+
+### Debian package
 
 Download `notemark_<version>_all.deb` from the
 [latest release](https://github.com/forhadkhan/notemark/releases/latest) and
@@ -195,6 +214,22 @@ Building the Debian package needs `dpkg-deb`. Building the AppImage downloads
 `make install` performs a plain prefix install and honours `PREFIX` and
 `DESTDIR`, so distribution packaging can use it directly.
 
+### Publishing the site and the APT repository
+
+`docs/` is the documentation site and `packaging/publish-pages.sh` publishes it
+together with the signed APT repository to the `gh-pages` branch, which GitHub
+Pages serves. Create the repository signing key once with
+`packaging/build-apt-repo.sh --init-key` (it lives in
+`~/.config/notemark-apt/gnupg`, outside the repository), then:
+
+```bash
+make pages            # build the deb and commit the site to a local gh-pages branch
+make pages PUSH=1     # ...and push it
+```
+
+Older package versions stay in the pool, so a previous release can still be
+installed with `apt install notemark=<version>`.
+
 ## Testing
 
 ```bash
@@ -234,6 +269,14 @@ If a test run stops with "GDK is not able to create a GL context", set
 - Typing `**bold**` as literal syntax is escaped rather than converted. Use
   `Ctrl+B` in page mode, or write in source mode.
 - The AppImage depends on host GTK and WebKitGTK rather than bundling them.
+
+## Author
+
+Notemark is written and maintained by
+[Forhad Khan](https://forhadkhan.com)
+([@forhadkhan](https://github.com/forhadkhan) on GitHub). Documentation:
+<https://forhadkhan.github.io/notemark/>. Bug reports and ideas are welcome in
+the [issue tracker](https://github.com/forhadkhan/notemark/issues).
 
 ## Licence
 

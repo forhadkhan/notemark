@@ -33,7 +33,17 @@ Commands for each are in [Installation](#installation) below.
   for a horizontal rule. Enter on an empty line leaves a list, quote or code
   block.
 - **Source and split modes.** Edit raw Markdown, or both views side by side with
-  two-way synchronisation.
+  two-way synchronisation. The editor can sit left, right, above or below the page.
+- **Tabs.** Every file opens in its own tab and keeps its own view, cursor,
+  scroll position and undo history. Drag to reorder, middle-click to close, and
+  right-click for more. Open a file or move a tab into a new window when you want
+  two side by side.
+- **CSV and TSV files** open as an editable table: add, delete and move rows and
+  columns, sort and filter, paste a block of cells, and switch to the raw text.
+- **Copy** the document text, the file path, or the file itself (to paste it into
+  a file manager) from the menu.
+- **Settings** (`Ctrl+,`) for the theme, source editor size, default view, split
+  layout, the status bar, and reopening your files on the next launch.
 - **Light and dark themes.** Follows the desktop colour scheme on first launch,
   and remembers your choice after that.
 - **Zoom** from 50 to 300 percent, with the toolbar, keyboard, or Ctrl and the
@@ -106,18 +116,27 @@ Runtime dependencies, by distribution:
 
 ## Usage
 
-Open a file from the toolbar, or pass it on the command line:
+Open files from the toolbar (pick several at once), or pass them on the command
+line:
 
 ```bash
-notemark notes.md
+notemark notes.md data.csv
 ```
 
 ### Keyboard shortcuts
 
 | Shortcut                          | Action                                   |
 | --------------------------------- | ---------------------------------------- |
-| `Ctrl+N`, `Ctrl+O`, `Ctrl+S`      | New, open, save                          |
+| `Ctrl+N` or `Ctrl+T`              | New tab                                  |
+| `Ctrl+Shift+N`                    | New window                               |
+| `Ctrl+O`, `Ctrl+S`                | Open, save                               |
 | `Ctrl+Shift+S`                    | Save as                                  |
+| `Ctrl+W`                          | Close tab                                |
+| `Ctrl+Tab`, `Ctrl+Shift+Tab`      | Next, previous tab                       |
+| `Alt+1` to `Alt+9`                | Go to a tab (9 is the last)              |
+| `Ctrl+Shift+C`                    | Copy the file path                       |
+| `Ctrl+,`                          | Settings                                 |
+| `Ctrl+Z`, `Ctrl+Shift+Z`, `Ctrl+Y` | Undo, redo                              |
 | `Ctrl+1`, `Ctrl+2`, `Ctrl+3`      | Page, source, split mode                 |
 | `Ctrl+E`                          | Toggle page and source                   |
 | `Ctrl+Shift+L`                    | Toggle dark mode                         |
@@ -130,7 +149,9 @@ notemark notes.md
 | `Ctrl` and click                  | Open a link                              |
 | `Ctrl+Q`                          | Quit                                     |
 
-Settings are stored in `~/.config/notemark/settings.json`.
+Settings are stored in `~/.config/notemark/settings.json`, and the files that
+were open when you quit in `~/.config/notemark/session.json`. Only saved files
+are reopened; an untitled tab is not.
 
 ## How it works
 
@@ -182,8 +203,22 @@ The suite loads the editor into an offscreen WebKit view and drives it the way a
 person would, then asserts on the Markdown that comes back out. It covers the
 typing shortcuts, list and quote and code block behaviour, checkbox
 synchronisation, inline formatting, paste, split-mode synchronisation, HTML
-sanitisation, and round-trip fidelity. An X display is required; on a headless
-machine run `xvfb-run -a python3 tests/test_editor.py`.
+sanitisation, round-trip fidelity and the CSV table. An X display is required; on
+a headless machine run `xvfb-run -a python3 tests/test_editor.py`.
+
+`tests/test_keys.py` starts the whole application and presses real keys through
+the X server (XTEST), to check the shortcuts end to end: undo and redo, bold and
+italic, indent, modes, tabs, zoom and save. Fake key presses go to whatever has
+focus, so it runs inside its own private Xvfb server (`xvfb-run`, from the `xvfb`
+package) and never on your desktop. It also needs `libXtst`, and skips itself
+without them:
+
+```bash
+python3 tests/test_keys.py
+```
+
+If a test run stops with "GDK is not able to create a GL context", set
+`WEBKIT_DISABLE_COMPOSITING_MODE=1` as above.
 
 ## Limitations
 

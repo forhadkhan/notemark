@@ -8,13 +8,40 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Tabs: every file opens in its own tab with its own view, cursor, scroll
+  position and undo history. Open several files at once, reorder tabs, close with
+  the button, middle-click or Ctrl+W, switch with Ctrl+Tab or Alt+1 to 9, and a
+  tab with unsaved changes asks before it closes.
+- New windows (Ctrl+Shift+N), opening files in a new window, and moving a tab to
+  a new window.
+- CSV and TSV files open as an editable table with sorting, filtering, row and
+  column editing, pasting a block of cells and a raw-text view; "New CSV Table"
+  in the menu.
+- Copy the document text, the file path (Ctrl+Shift+C) or the file itself, from
+  the menu and the tab's context menu.
+- A Settings dialog (Ctrl+,): theme, source editor font size, default view, split
+  layout, synchronised scrolling, showing the status bar, and reopening your files
+  on launch. The layout and scroll options moved here from the menu.
+- Files that were open when Notemark closed are reopened on the next launch.
+- `tests/test_keys.py`, which presses real keys through the X server to test the
+  shortcuts end to end.
 - Four split layouts (editor left, right, top or bottom), a draggable divider that
   remembers its position, and a synchronised-scrolling toggle.
 - Line and column in the status bar for source and split modes, and a reading-time
   estimate.
 
+### Changed
+
+- The Save button uses a floppy-disk icon.
+- The view (page, source or split) belongs to each tab. New tabs start in the view
+  chosen under Settings rather than in whichever one you used last.
+
 ### Fixed
 
+- Tab nests a list item in page mode again. It produced a list inside a list that
+  Markdown could not express, so the nesting was lost on save.
+- Shift+Tab was ignored in page and source mode and moved the focus out of the
+  document, because WebKitGTK reports that key as "Unidentified".
 - Ctrl+Z, Ctrl+Shift+Z and Ctrl+Y now undo and redo in page, source and split
   modes (Ctrl+Y was not bound at all).
 - The source editor now fills its pane, as a monospace plain-text editor with light

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light" data-mode="page" data-layout="lr">
+<html lang="en" data-theme="light" data-mode="page" data-layout="lr" data-kind="md">
 <head>
 <meta charset="utf-8">
 <title>Notemark</title>
@@ -13,12 +13,14 @@
     </section>
     <div id="divider" role="separator" title="Drag to resize, double-click to reset"></div>
     <section id="page-pane" class="pane">
+      <div id="grid"></div>
       <article id="page" class="page-inner prose" contenteditable="true" spellcheck="true" data-placeholder="Start writing… Markdown shortcuts work: # heading, - list, [] task, > quote, ``` code"></article>
     </section>
   </div>
   <script src="vendor/marked.umd.js"></script>
   <script src="vendor/turndown.umd.js"></script>
   <script src="vendor/turndown-plugin-gfm.js"></script>
+  <script src="csv.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

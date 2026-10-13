@@ -34,7 +34,7 @@ test:
 install:
 	install -d $(LIBDIR) $(LIBDIR)/ui $(LIBDIR)/ui/vendor
 	install -m 644 notemark.py $(LIBDIR)/notemark.py
-	install -m 644 ui/index.html ui/app.css ui/app.js $(LIBDIR)/ui/
+	install -m 644 ui/index.html ui/app.css ui/app.js ui/csv.js $(LIBDIR)/ui/
 	install -m 644 ui/vendor/*.js ui/vendor/LICENSE-* $(LIBDIR)/ui/vendor/
 	install -d $(BINDIR)
 	sed 's|@LIBDIR@|$(PREFIX)/lib/$(APP)|g' bin/notemark.in > $(BINDIR)/$(APP)

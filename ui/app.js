@@ -7,7 +7,8 @@
  *   source – one plain Markdown textarea.
  *   split  – source on the left, WYSIWYG page on the right.
  *
- * #editor (textarea) always holds the canonical Markdown text.
+ * #editor (textarea) always holds the canonical text. A document is either Markdown ("md") or
+ * CSV ("csv"); for CSV the page is an editable table (see csv.js) instead of the WYSIWYG page.
  */
 (function () {
   "use strict";
@@ -20,6 +21,7 @@
   const divider = document.getElementById("divider");
 
   let mode = "page";
+  let kind = "md";
   let savedText = "";
   let renderTimer = null;
   let syncTimer = null;
@@ -32,6 +34,12 @@
   function send(msg) {
     try { window.webkit.messageHandlers.app.postMessage(JSON.stringify(msg)); } catch (e) { /* not in GTK host */ }
   }
+
+  // ---------- CSV table view ----------
+  const grid = window.NotemarkCsv.create(document.getElementById("grid"), {
+    onChange(text) { editor.value = text; notifyChange(); },
+    copy(text, note) { send({ type: "copy", text, note }); },
+  });
 
   // ---------- Markdown <-> HTML ----------
   marked.setOptions({ gfm: true, breaks: false });
@@ -149,6 +157,7 @@
   }
 
   function renderPage() {
+    if (kind === "csv") { grid.load(editor.value); pageDirty = false; return; }
     const body = renderHtml(editor.value);
     page.replaceChildren(...Array.from(body.childNodes));
     if (!page.firstElementChild) page.appendChild(emptyParagraph());
@@ -158,7 +167,7 @@
   /** Convert the page DOM back into Markdown and store it as the canonical text. */
   function syncFromPage() {
     clearTimeout(syncTimer);
-    if (!pageDirty) return;
+    if (!pageDirty || kind === "csv") return;
     let md = turndown.turndown(page).replace(/\u00a0/g, " ").replace(/\n{3,}/g, "\n\n").replace(/[ \t]+$/gm, m => m.length >= 2 ? "  " : "");
     md = md.replace(/^\n+/, "");
     if (md && !md.endsWith("\n")) md += "\n";
@@ -624,6 +633,7 @@
   }
 
   function onPagePaneMousedown(ev) {
+    if (kind !== "md") return;
     // Clicking the empty space below the text puts the caret at the end (or adds a paragraph).
     if (ev.target !== pagePane && ev.target !== page) return;
     ev.preventDefault();
@@ -638,12 +648,15 @@
   // the accelerators, so both are handled here and the native key action is suppressed.
   function historyTarget() {
     const active = document.activeElement;
-    if (active === editor || page.contains(active)) return active === editor ? editor : page;
+    if (active === editor) return editor;
+    if (kind === "csv") return grid.contains(active) && active.classList.contains("cell") ? grid : mode === "source" ? editor : grid;
+    if (page.contains(active)) return page;
     return mode === "source" ? editor : page;
   }
 
   function runHistory(redo) {
     const target = historyTarget();
+    if (target === grid) { if (redo) grid.redo(); else grid.undo(); return; }
     if (document.activeElement !== target && !(target === page && page.contains(document.activeElement))) target.focus();
     document.execCommand(redo ? "redo" : "undo");
     if (target === page) scheduleSync();
@@ -697,6 +710,12 @@
     send({ type: "split", pct: parseFloat(workspace.style.getPropertyValue("--split")) });
   }
 
+  function focusPage(atStart) {
+    if (kind === "csv") { if (atStart) grid.focus(); return; }
+    page.focus();
+    if (atStart) placeCaret(page.firstElementChild || page, false);
+  }
+
   function reportCursor() {
     if (mode === "page") return;
     const before = editor.value.slice(0, editor.selectionStart);
@@ -713,19 +732,21 @@
       api.setTheme(opts.theme || "light");
       api.setLayout(opts.layout || "lr");
       api.setSplit(opts.split || 50);
+      api.setEditorFont(opts.editor_font || 14);
       syncEnabled = opts.sync !== false;
       api.setMode(opts.mode || "page", true);
     },
-    load(text) {
+    load(text, opts) {
+      api.setKind(opts && opts.kind);
       editor.value = text || "";
-      savedText = editor.value;
+      savedText = opts && typeof opts.saved === "string" ? opts.saved : editor.value;
       pageDirty = false;
       editor.setSelectionRange(0, 0);
       editor.scrollTop = 0;
       pagePane.scrollTop = 0;
       if (mode !== "source") {
         renderPage();
-        if (mode === "page") { page.focus(); placeCaret(page.firstElementChild || page, false); }
+        if (mode === "page") focusPage(true);
       } else {
         editor.focus();
       }
@@ -739,7 +760,7 @@
       send({ type: "content", text: currentText() });
     },
     sendHtml(title) {
-      const body = renderHtml(currentText());
+      const body = renderHtml(kind === "csv" ? window.NotemarkCsv.toMarkdown(window.NotemarkCsv.parse(currentText()).rows) : currentText());
       body.querySelectorAll("input[type=checkbox]").forEach(b => { b.disabled = true; });
       body.querySelectorAll("[contenteditable]").forEach(el => el.removeAttribute("contenteditable"));
       const css = Array.from(document.styleSheets).map(sheet => {
@@ -757,6 +778,12 @@
       html.dataset.layout = layout;
     },
     setSplit(pct) { workspace.style.setProperty("--split", clamp(pct, 15, 85) + "%"); },
+    setKind(next) {
+      kind = next === "csv" ? "csv" : "md";
+      html.dataset.kind = kind;
+    },
+    getKind() { return kind; },
+    setEditorFont(px) { document.documentElement.style.setProperty("--src-size", clamp(+px || 14, 10, 28) + "px"); },
     setSync(on) { syncEnabled = !!on; },
     setTheme(theme) { html.dataset.theme = theme === "dark" ? "dark" : "light"; },
     setMode(next, quiet) {
@@ -766,7 +793,7 @@
       html.dataset.mode = mode;
       if (mode !== "source") renderPage();
       if (mode === "source") editor.focus();
-      else if (mode === "page") page.focus();
+      else if (mode === "page") focusPage(false);
       if (!quiet) send({ type: "mode", mode });
     },
     undo() { runHistory(false); },

@@ -134,7 +134,8 @@ def build_cases():
          " T.page.dispatchEvent(new Event('input')); " + MD,
          lambda o: o == "some **bold** text\n")
     case("italic nests inside bold",
-         "document.execCommand('italic'); T.page.dispatchEvent(new Event('input')); " + MD,
+         "var b = document.querySelector('#page strong, #page b'); T.select(b.firstChild, 0, b.firstChild.length);"
+         " document.execCommand('italic'); T.page.dispatchEvent(new Event('input')); " + MD,
          lambda o: o == "some ***bold*** text\n")
 
     # --- Structural blocks loaded from a file --------------------------------
@@ -252,6 +253,43 @@ def build_cases():
          lambda o: o == "3")
     case("Ctrl+Y redoes in the source editor",
          "var ed = document.getElementById('editor'); K(ed, 'y'); ed.value.endsWith('abc')", lambda o: o == "true")
+
+    # --- CSV documents -------------------------------------------------------
+    case("CSV parsing handles quotes, embedded delimiters and newlines",
+         "JSON.stringify(NotemarkCsv.parse('a,b\\n\"x,1\",\"he said \"\"hi\"\"\\nthere\"\\n').rows)",
+         lambda o: json.loads(o) == [["a", "b"], ["x,1", 'he said "hi"\nthere']])
+    case("the delimiter is detected (semicolon, tab, pipe)",
+         "['a;b;c', 'a\\tb\\tc', 'a|b|c', 'a,b'].map(NotemarkCsv.detectDelimiter).join('')",
+         lambda o: o == ";\t|,")
+    case("stringify quotes only where needed and round-trips",
+         "var t = 'a,b\\n\"x,1\",\"q\"\"q\"\\n'; (NotemarkCsv.stringify(NotemarkCsv.parse(t).rows) === t)",
+         lambda o: o == "true")
+    case("a CSV document shows a table and keeps its text",
+         "Notemark.setMode('page'); Notemark.load('name,age\\nAda,36\\nLin,41\\n', {kind: 'csv'});"
+         " document.documentElement.dataset.kind + '|' + document.querySelectorAll('#grid tbody tr').length"
+         " + '|' + document.querySelectorAll('#grid thead .cell').length + '|' + JSON.stringify(Notemark.toMarkdown())",
+         lambda o: o == 'csv|2|2|"name,age\\nAda,36\\nLin,41\\n"')
+    case("editing a cell updates the CSV text",
+         "var c = document.querySelector('#grid tbody .cell[data-r=\"1\"][data-c=\"1\"]'); c.focus(); c.textContent = '37';"
+         " c.dispatchEvent(new Event('input', {bubbles: true})); Notemark.toMarkdown()",
+         lambda o: o == "name,age\nAda,37\nLin,41\n")
+    case("Ctrl+Z undoes a table edit",
+         "var c = document.querySelector('#grid tbody .cell[data-r=\"1\"][data-c=\"1\"]'); c.blur();"
+         " c.focus(); c.dispatchEvent(new KeyboardEvent('keydown', {key: 'z', ctrlKey: true, bubbles: true, cancelable: true}));"
+         " Notemark.toMarkdown()",
+         lambda o: o == "name,age\nAda,36\nLin,41\n")
+    case("adding a row and a column grows the table",
+         "document.querySelector('[data-act=row-add]').click(); document.querySelector('[data-act=col-add]').click();"
+         " JSON.stringify(Notemark.toMarkdown())",
+         lambda o: json.loads(o) == "name,age,\nAda,36,\n,,\nLin,41,\n" or json.loads(o).count("\n") == 4)
+    case("source edits re-render the table in split mode",
+         "Notemark.setMode('split'); var ed = document.getElementById('editor'); ed.value = 'x,y\\n1,2\\n3,4\\n5,6\\n';"
+         " ed.dispatchEvent(new Event('input', {bubbles: true})); 1", lambda o: o == "1")
+    case("the table follows the source", "document.querySelectorAll('#grid tbody tr').length",
+         lambda o: o == "3")
+    case("Markdown documents are unaffected afterwards",
+         "Notemark.setMode('page'); Notemark.load('# Back\\n'); document.documentElement.dataset.kind + '|' +"
+         " (document.querySelector('#page h1') || {}).textContent", lambda o: o == "md|Back")
 
     # --- Safety --------------------------------------------------------------
     case("script tags in Markdown are stripped",

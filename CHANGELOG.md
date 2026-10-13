@@ -35,7 +35,7 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - The Save button uses a floppy-disk icon.
-- New application icon: a blue tile with a page and a Markdown heading mark,
+- New application icon: an orange tile with a page and a Markdown heading mark,
   legible on light and dark backgrounds.
 - The view (page, source or split) belongs to each tab. New tabs start in the view
   chosen under Settings rather than in whichever one you used last.

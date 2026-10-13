@@ -234,6 +234,25 @@ def build_cases():
          " Notemark.setMode('page'); Math.abs(e / r.width - 0.65) < 0.02",
          lambda o: o == "true")
 
+    # --- Undo / redo (Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y) --------------------------
+    key = ("function K(el, k, shift) { el.dispatchEvent(new KeyboardEvent('keydown',"
+           " {key: k, ctrlKey: true, shiftKey: !!shift, bubbles: true, cancelable: true})); } ")
+    case("Ctrl+Z undoes typing in the page",
+         key + "Notemark.setMode('page'); Notemark.load('hello\\n'); T.page.focus(); T.caretEnd(document.querySelector('#page p'));"
+         " T.type(' world'); var before = " + MD + "; K(T.page, 'z'); before.trim() + '|' + " + MD,
+         lambda o: o == "hello world|hello\n")
+    case("Ctrl+Y redoes it", "K(T.page, 'y'); " + MD, lambda o: o == "hello world\n")
+    case("Ctrl+Shift+Z redoes too",
+         "K(T.page, 'z'); var u = " + MD + "; K(T.page, 'Z', true); u + '|' + " + MD,
+         lambda o: o == "hello\n|hello world\n")
+    case("Ctrl+Z undoes typing in the source editor",
+         key + "Notemark.setMode('source'); var ed = document.getElementById('editor'); ed.focus();"
+         " ed.setSelectionRange(ed.value.length, ed.value.length); document.execCommand('insertText', false, 'abc');"
+         " var typed = ed.value; K(ed, 'z'); typed.length - ed.value.length",
+         lambda o: o == "3")
+    case("Ctrl+Y redoes in the source editor",
+         "var ed = document.getElementById('editor'); K(ed, 'y'); ed.value.endsWith('abc')", lambda o: o == "true")
+
     # --- Safety --------------------------------------------------------------
     case("script tags in Markdown are stripped",
          "Notemark.setMode('page');"

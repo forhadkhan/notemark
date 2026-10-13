@@ -633,6 +633,31 @@
     placeCaret(last, true);
   }
 
+  // ---------- Undo / redo ----------
+  // WebKitGTK binds Ctrl+Z but not Ctrl+Y, and the binding is unreliable once the host window owns
+  // the accelerators, so both are handled here and the native key action is suppressed.
+  function historyTarget() {
+    const active = document.activeElement;
+    if (active === editor || page.contains(active)) return active === editor ? editor : page;
+    return mode === "source" ? editor : page;
+  }
+
+  function runHistory(redo) {
+    const target = historyTarget();
+    if (document.activeElement !== target && !(target === page && page.contains(document.activeElement))) target.focus();
+    document.execCommand(redo ? "redo" : "undo");
+    if (target === page) scheduleSync();
+  }
+
+  function onHistoryKey(ev) {
+    if (!(ev.ctrlKey || ev.metaKey) || ev.altKey) return;
+    const k = ev.key.toLowerCase();
+    const z = k === "z" || ev.code === "KeyZ", y = k === "y" || ev.code === "KeyY";
+    if (!z && !y) return;
+    ev.preventDefault();
+    runHistory(y || ev.shiftKey);
+  }
+
   // ---------- Scroll sync (split mode) ----------
   function syncScroll(from, to) {
     if (syncing) return;
@@ -744,12 +769,15 @@
       else if (mode === "page") page.focus();
       if (!quiet) send({ type: "mode", mode });
     },
+    undo() { runHistory(false); },
+    redo() { runHistory(true); },
     toMarkdown() { return currentText(); },
     getMode() { return mode; },
   };
   window.Notemark = api;
 
   // ---------- Wiring ----------
+  document.addEventListener("keydown", onHistoryKey, true);
   editor.addEventListener("input", onSourceInput);
   editor.addEventListener("keydown", onSourceKeydown);
   editor.addEventListener("scroll", () => { if (mode === "split" && syncEnabled) syncScroll(editor, pagePane); });

@@ -15,6 +15,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Ctrl+Z, Ctrl+Shift+Z and Ctrl+Y now undo and redo in page, source and split
+  modes (Ctrl+Y was not bound at all).
 - The source editor now fills its pane, as a monospace plain-text editor with light
   and dark colours, in both source and split modes.
 

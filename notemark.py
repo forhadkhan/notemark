@@ -24,7 +24,7 @@ from gi.repository import Gdk, Gio, GLib, Gtk, WebKit2  # noqa: E402
 
 APP_ID = "com.forhadkhan.Notemark"
 APP_NAME = "Notemark"
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 UI_INDEX = os.path.join(HERE, "ui", "index.html")

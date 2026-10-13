@@ -6,6 +6,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-13
+
 ### Added
 
 - Tabs: every file opens in its own tab with its own view, cursor, scroll
@@ -66,4 +68,5 @@ First public release.
   `~/.config/notemark/settings.json`.
 - Packaging as a Debian package, an AppImage and a portable tarball.
 
+[0.2.0]: https://github.com/forhadkhan/notemark/releases/tag/v0.2.0
 [0.1.0]: https://github.com/forhadkhan/notemark/releases/tag/v0.1.0

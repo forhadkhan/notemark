@@ -73,6 +73,25 @@ window.T = {
 MD = "Notemark.toMarkdown()"
 
 
+# CSV helpers: load a 3x2 table, select a cell, open its right-click menu and click an entry.
+CSV_LOAD = "Notemark.setMode('page'); Notemark.load('a,b\\n1,2\\n3,4\\n', {kind: 'csv'}); "
+
+
+def cell_sel(r, c):
+    return '#grid %s .cell[data-r="%d"][data-c="%d"]' % ("thead" if r == 0 else "tbody", r, c)
+
+
+def right_click(sel):
+    return ("(function(){var el=document.querySelector('%s');el.focus();"
+            "el.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:30,clientY:30}));})();") % sel
+
+
+def menu_click(label):
+    return ("(function(){var b=[].slice.call(document.querySelectorAll('.ctx-menu button'))"
+            ".filter(function(x){return x.textContent.trim()==='%s';})[0];"
+            "if(!b)return 'missing';if(b.disabled)return 'disabled';b.click();return 'clicked';})()") % label
+
+
 def build_cases():
     """Return [(name, javascript, check)]; check receives the JS result as a string."""
     c = []
@@ -300,6 +319,35 @@ def build_cases():
          "document.querySelector('[data-act=row-add]').click(); document.querySelector('[data-act=col-add]').click();"
          " JSON.stringify(Notemark.toMarkdown())",
          lambda o: json.loads(o) == "name,age,\nAda,36,\n,,\nLin,41,\n" or json.loads(o).count("\n") == 4)
+    case("right-click inserts a column to the left of the cell",
+         CSV_LOAD + right_click(cell_sel(1, 1)) + "var res = " + menu_click("Insert column left") + "; res + '|' + " + MD,
+         lambda o: o == "clicked|a,,b\n1,,2\n3,,4\n")
+    case("right-click deletes the column",
+         CSV_LOAD + right_click(cell_sel(0, 1)) + "var res = " + menu_click("Delete column") + "; res + '|' + " + MD,
+         lambda o: o == "clicked|a\n1\n3\n")
+    case("the header row cannot get an insert above or a delete row",
+         CSV_LOAD + right_click(cell_sel(0, 0)) +
+         "var off = [].slice.call(document.querySelectorAll('.ctx-menu button[disabled]')).map(function(b){return b.textContent.trim();}); off.join(',')",
+         lambda o: o == "Insert row above,Delete row")
+    case("Escape closes the right-click menu and returns to the cell",
+         CSV_LOAD + right_click(cell_sel(1, 1)) +
+         "document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true, cancelable: true}));"
+         " (document.querySelector('.ctx-menu') ? 'open' : 'closed') + '|' + document.activeElement.dataset.r + document.activeElement.dataset.c",
+         lambda o: o == "closed|11")
+    case("Shift+F10 opens the menu on the focused cell, with focus in it",
+         CSV_LOAD + "var el = document.querySelector('" + cell_sel(1, 0) + "'); el.focus();"
+         " el.dispatchEvent(new KeyboardEvent('keydown', {key: 'F10', shiftKey: true, bubbles: true, cancelable: true}));"
+         " (document.querySelector('.ctx-menu') ? 'open' : 'closed') + '|' + document.activeElement.textContent.trim()",
+         lambda o: o == "open|Insert row above")
+    case("the toolbar delete row leaves the header alone",
+         CSV_LOAD + "document.querySelector('" + cell_sel(0, 0) + "').focus();"
+         " document.querySelector('[data-act=row-del]').click(); " + MD,
+         lambda o: o == "a,b\n1,2\n3,4\n")
+    case("inserting a column before the sorted column keeps the sort on its column",
+         CSV_LOAD + "document.querySelector('[data-sort=\"1\"]').click();" + right_click(cell_sel(1, 0)) +
+         "var res = " + menu_click("Insert column left") + "; res + '|' + "
+         "(document.querySelector('#grid thead th[data-c=\"2\"] .sort') ? 'sorted' : 'lost')",
+         lambda o: o == "clicked|sorted")
     case("source edits re-render the table in split mode",
          "Notemark.setMode('split'); var ed = document.getElementById('editor'); ed.value = 'x,y\\n1,2\\n3,4\\n5,6\\n';"
          " ed.dispatchEvent(new Event('input', {bubbles: true})); 1", lambda o: o == "1")

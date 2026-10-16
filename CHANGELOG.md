@@ -6,6 +6,18 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Right-click menu in the CSV table: insert a row above or below, insert a column
+  left or right, delete the row or the column. Shift+F10 or the Menu key opens it
+  from the keyboard, and right-clicking a row number works too.
+
+### Changed
+
+- CSV toolbar: "Add row", "Add column", "Delete row" and "Delete column" now use
+  plus and minus icons. Delete row no longer removes the first data row when the
+  header is selected.
+
 ## [0.2.0] - 2026-10-13
 
 ### Added

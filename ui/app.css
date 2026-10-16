@@ -225,5 +225,17 @@ html[data-kind="csv"] #page-pane { display: flex; flex-direction: column; overfl
 th:hover .sort-btn, .sort-btn:focus-visible, .sort-btn:has(.sort) { opacity: 1; }
 .sort-btn:hover { background: var(--code-bg); color: var(--fg); }
 .sort-btn .sort { display: inline-flex; color: var(--accent); }
+.ctx-menu {
+  position: fixed; z-index: 100; min-width: 200px; padding: 4px; font: inherit; font-size: 13px;
+  color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+}
+.ctx-menu button {
+  display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px; font: inherit; color: inherit;
+  text-align: left; background: transparent; border: 0; border-radius: 5px; cursor: pointer;
+}
+.ctx-menu button:hover:not([disabled]), .ctx-menu button:focus-visible { background: var(--code-bg); outline: none; }
+.ctx-menu button[disabled] { color: var(--muted); opacity: 0.55; cursor: default; }
+.ctx-sep { height: 1px; margin: 4px 6px; background: var(--border); }
 html[data-kind="csv"][data-mode="split"] #page-pane { min-width: 0; }
 html[data-mode="source"][data-kind="csv"] #page-pane { display: none; }

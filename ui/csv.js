@@ -77,10 +77,8 @@
 
   // ---------- Table view ----------
   const ICONS = {
-    rowAdd: '<path d="M3 6h18M3 12h18"/><path d="M12 15v6M9 18h6"/>',
-    colAdd: '<path d="M6 3v18M12 3v18"/><path d="M15 12h6M18 9v6"/>',
-    rowDel: '<path d="M3 6h18M3 12h18"/><path d="M9 18h6"/>',
-    colDel: '<path d="M6 3v18M12 3v18"/><path d="M15 12h6"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    minus: '<path d="M5 12h14"/>',
     copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/>',
     up: '<path d="m6 15 6-6 6 6"/>',
     down: '<path d="m6 9 6 6 6-6"/>',
@@ -103,10 +101,10 @@
 
     root.innerHTML =
       '<div class="grid-bar">' +
-      '<button type="button" data-act="row-add" title="Add row below">' + icon("rowAdd") + "<span>Row</span></button>" +
-      '<button type="button" data-act="col-add" title="Add column after">' + icon("colAdd") + "<span>Column</span></button>" +
-      '<button type="button" data-act="row-del" title="Delete row">' + icon("rowDel") + "<span>Row</span></button>" +
-      '<button type="button" data-act="col-del" title="Delete column">' + icon("colDel") + "<span>Column</span></button>" +
+      '<button type="button" data-act="row-add" title="Add row below the selected row">' + icon("plus") + "<span>Add row</span></button>" +
+      '<button type="button" data-act="col-add" title="Add column after the selected column">' + icon("plus") + "<span>Add column</span></button>" +
+      '<button type="button" data-act="row-del" title="Delete the selected row">' + icon("minus") + "<span>Delete row</span></button>" +
+      '<button type="button" data-act="col-del" title="Delete the selected column">' + icon("minus") + "<span>Delete column</span></button>" +
       '<span class="grid-sep"></span>' +
       '<button type="button" data-act="copy-md" title="Copy as Markdown table">' + icon("copy") + "<span>Markdown</span></button>" +
       '<button type="button" data-act="copy-csv" title="Copy as CSV">' + icon("copy") + "<span>CSV</span></button>" +
@@ -142,6 +140,7 @@
     }
 
     function render() {
+      closeMenu(false);   // a menu open over the old rows would act on the wrong cells
       const width = rows[0].length;
       const all = visibleRows();
       const body = all.slice(0, MAX_ROWS);
@@ -153,7 +152,7 @@
       }
       h += "</tr></thead><tbody>";
       for (const r of body) {
-        h += '<tr><td class="rownum">' + r + "</td>";
+        h += '<tr><td class="rownum" data-r="' + r + '">' + r + "</td>";
         for (let c = 0; c < width; c++) h += '<td><span class="cell" contenteditable="plaintext-only" spellcheck="false" data-r="' + r + '" data-c="' + c + '"></span></td>';
         h += "</tr>";
       }
@@ -199,19 +198,126 @@
       if (el) { el.focus(); const sel = getSelection(), range = document.createRange(); range.selectNodeContents(el); range.collapse(false); sel.removeAllRanges(); sel.addRange(range); }
     }
 
+    // Structural edits, shared by the toolbar, the keyboard and the right-click menu.
+    // Row 0 is the header: it can't have a row inserted above it or be deleted.
+    function insertRow(at, c) {
+      if (at < 1) return;
+      edit(() => rows.splice(at, 0, Array(rows[0].length).fill("")));
+      focusCell(at, c);
+    }
+    function insertCol(at, r) {
+      edit(() => {
+        rows.forEach(row => row.splice(at, 0, ""));
+        if (sortCol >= at) sortCol++;
+      });
+      focusCell(r, at);
+    }
+    function deleteRow(at, c) {
+      if (at < 1 || rows.length < 2) return;
+      edit(() => rows.splice(at, 1));
+      focusCell(Math.min(at, rows.length - 1), c);
+    }
+    function deleteCol(at, r) {
+      if (rows[0].length < 2) return;
+      edit(() => {
+        rows.forEach(row => row.splice(at, 1));
+        if (sortCol === at) sortCol = -1;
+        else if (sortCol > at) sortCol--;
+      });
+      focusCell(r, Math.min(at, rows[0].length - 1));
+    }
+
     function act(name) {
       const { r, c } = selected;
-      if (name === "row-add") { edit(() => rows.splice(r + 1, 0, Array(rows[0].length).fill(""))); focusCell(Math.min(r + 1, rows.length - 1), c); }
-      else if (name === "col-add") { edit(() => rows.forEach(row => row.splice(c + 1, 0, ""))); focusCell(r, c + 1); }
-      else if (name === "row-del") {
-        if (rows.length <= 1) return;
-        edit(() => rows.splice(Math.max(r, 1), 1)); focusCell(Math.min(Math.max(r, 1), rows.length - 1), c);
-      } else if (name === "col-del") {
-        if (rows[0].length <= 1) return;
-        edit(() => rows.forEach(row => row.splice(c, 1))); sortCol = -1; focusCell(r, Math.min(c, rows[0].length - 1));
-      } else if (name === "copy-md") hooks.copy(toMarkdown(rows), "Copied as a Markdown table");
+      if (name === "row-add") insertRow(r + 1, c);
+      else if (name === "col-add") insertCol(c + 1, r);
+      else if (name === "row-del") deleteRow(r, c);
+      else if (name === "col-del") deleteCol(c, r);
+      else if (name === "copy-md") hooks.copy(toMarkdown(rows), "Copied as a Markdown table");
       else if (name === "copy-csv") hooks.copy(stringify(rows, delim), "Copied as CSV");
     }
+
+    // ---------- Right-click menu (also Shift+F10 and the Menu key) ----------
+    let menu = null, menuItems = [], menuCell = null;
+
+    function menuEntries(r, c) {
+      const header = r === 0;
+      return [
+        { label: "Insert row above", icon: "plus", off: header, run: () => insertRow(r, c) },
+        { label: "Insert row below", icon: "plus", run: () => insertRow(r + 1, c) },
+        { label: "Insert column left", icon: "plus", run: () => insertCol(c, r) },
+        { label: "Insert column right", icon: "plus", run: () => insertCol(c + 1, r) },
+        null,
+        { label: "Delete row", icon: "minus", off: header || rows.length < 2, run: () => deleteRow(r, c) },
+        { label: "Delete column", icon: "minus", off: rows[0].length < 2, run: () => deleteCol(c, r) },
+      ];
+    }
+
+    function closeMenu(refocus) {
+      if (!menu) return;
+      menu.remove();
+      menu = null;
+      document.removeEventListener("mousedown", closeMenuOnOutside, true);
+      document.removeEventListener("keydown", menuKey, true);
+      window.removeEventListener("resize", closeMenuNow);
+      window.removeEventListener("scroll", closeMenuNow, true);
+      if (refocus && menuCell) focusCell(menuCell.r, menuCell.c);
+    }
+    const closeMenuNow = () => closeMenu(false);
+    function closeMenuOnOutside(ev) { if (menu && !menu.contains(ev.target)) closeMenu(false); }
+
+    function menuKey(ev) {
+      if (ev.key === "Escape") { ev.preventDefault(); ev.stopPropagation(); closeMenu(true); }
+      else if (ev.key === "Tab") closeMenu(false);
+      else if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
+        ev.preventDefault(); ev.stopPropagation();
+        const items = [...menu.querySelectorAll("button:not([disabled])")];
+        if (!items.length) return;
+        const i = items.indexOf(document.activeElement);
+        const next = ev.key === "ArrowDown" ? (i + 1) % items.length : (i <= 0 ? items.length - 1 : i - 1);
+        items[next].focus();
+      }
+    }
+
+    function openMenu(x, y, r, c, fromKeyboard) {
+      closeMenu(false);
+      selected = { r, c };
+      menuCell = { r, c };
+      const entries = menuEntries(r, c);
+      menuItems = entries.filter(Boolean);
+      menu = document.createElement("div");
+      menu.className = "ctx-menu";
+      menu.setAttribute("role", "menu");
+      menu.innerHTML = entries.map(e => e === null
+        ? '<div class="ctx-sep" role="separator"></div>'
+        : '<button type="button" role="menuitem" data-i="' + menuItems.indexOf(e) + '"' + (e.off ? " disabled" : "") + ">" +
+          icon(e.icon) + "<span>" + e.label + "</span></button>").join("");
+      menu.addEventListener("click", ev => {
+        const b = ev.target.closest("button[data-i]");
+        if (!b || b.disabled) return;
+        const item = menuItems[+b.dataset.i];
+        closeMenu(false);
+        item.run();
+      });
+      document.body.appendChild(menu);
+      const w = menu.offsetWidth, h = menu.offsetHeight;
+      menu.style.left = Math.max(4, Math.min(x, innerWidth - w - 4)) + "px";
+      menu.style.top = Math.max(4, Math.min(y, innerHeight - h - 4)) + "px";
+      document.addEventListener("mousedown", closeMenuOnOutside, true);
+      document.addEventListener("keydown", menuKey, true);
+      window.addEventListener("resize", closeMenuNow);
+      window.addEventListener("scroll", closeMenuNow, true);
+      if (fromKeyboard) { const first = menu.querySelector("button:not([disabled])"); if (first) first.focus(); }
+    }
+
+    root.addEventListener("contextmenu", ev => {
+      const cell = ev.target.closest(".cell");
+      const num = ev.target.closest("td.rownum");
+      if (!cell && !num) return;
+      ev.preventDefault();
+      if (cell) openMenu(ev.clientX, ev.clientY, +cell.dataset.r, +cell.dataset.c);
+      else { focusCell(+num.dataset.r, selected.c); openMenu(ev.clientX, ev.clientY, +num.dataset.r, selected.c); }
+    });
 
     root.addEventListener("click", ev => {
       const sortBtn = ev.target.closest("[data-sort]");
@@ -249,6 +355,12 @@
       const el = ev.target.closest(".cell");
       if (!el) return;
       const r = +el.dataset.r, c = +el.dataset.c, width = rows[0].length;
+      if (ev.key === "ContextMenu" || (ev.key === "F10" && ev.shiftKey)) {
+        ev.preventDefault();
+        const box = el.getBoundingClientRect();
+        openMenu(box.left + 8, box.bottom, r, c, true);
+        return;
+      }
       const move = (nr, nc) => { ev.preventDefault(); focusCell(nr, nc); };
       const order = visibleRows(); order.unshift(0);
       const pos = order.indexOf(r);

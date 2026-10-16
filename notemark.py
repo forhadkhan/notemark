@@ -10,10 +10,15 @@ Every open file is a tab (``Document``) with its own view, so undo history,
 scroll position, cursor and mode are kept per file. ``.csv`` and ``.tsv`` files
 open as an editable table (``ui/csv.js``).
 """
+import io
 import json
 import os
+import re
 import sys
+import unicodedata
+import zipfile
 from urllib.parse import quote
+from xml.sax.saxutils import escape
 
 import gi
 
@@ -276,6 +281,191 @@ class Document:
 
 
 # --------------------------------------------------------------------------- #
+# Excel export: a CSV table becomes one worksheet of an .xlsx workbook
+# --------------------------------------------------------------------------- #
+# Limits of the .xlsx format. Past the row and column limits Excel cannot open the sheet,
+# so those exports are refused rather than cut short.
+XLSX_MAX_ROWS = 1_048_576
+XLSX_MAX_COLS = 16_384
+XLSX_MAX_CELL = 32_767          # characters in one cell
+XLSX_MIN_WIDTH = 8              # auto-fitted column widths, in characters
+XLSX_MAX_WIDTH = 60
+CSV_DELIMITERS = (",", ";", "\t", "|")          # same order as ui/csv.js
+_XML_BAD = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff￾￿]")
+_NS_MAIN = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+_NS_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+_NS_PKG = "http://schemas.openxmlformats.org/package/2006/relationships"
+_XML_HEAD = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+
+
+class ExportError(Exception):
+    """An export that cannot be written as asked. The message is shown to the user."""
+
+
+def detect_delimiter(text):
+    """The delimiter that appears most often on the first non-empty line, outside quotes (as ui/csv.js)."""
+    first = next((ln for ln in re.split(r"\r?\n", text) if ln.strip()), "")
+    best, best_count = ",", 0
+    for delim in CSV_DELIMITERS:
+        count, quoted = 0, False
+        for ch in first:
+            if ch == '"':
+                quoted = not quoted
+            elif not quoted and ch == delim:
+                count += 1
+        if count > best_count:
+            best, best_count = delim, count
+    return best
+
+
+def parse_csv(text):
+    """Rows of cells, read the way ui/csv.js reads them, so the workbook matches the table on screen.
+
+    A quote only opens a cell at its start; ragged rows are padded to the widest row.
+    """
+    delim = detect_delimiter(text)
+    if text.startswith("﻿"):
+        text = text[1:]
+    rows, row, cell, quoted = [], [], [], False
+    i, n = 0, len(text)
+    while i < n:
+        ch = text[i]
+        if quoted:
+            if ch == '"':
+                if i + 1 < n and text[i + 1] == '"':
+                    cell.append('"')
+                    i += 1
+                else:
+                    quoted = False
+            else:
+                cell.append(ch)
+        elif ch == '"' and not cell:
+            quoted = True
+        elif ch == delim:
+            row.append("".join(cell))
+            cell = []
+        elif ch in "\r\n":
+            if ch == "\r" and i + 1 < n and text[i + 1] == "\n":
+                i += 1
+            row.append("".join(cell))
+            rows.append(row)
+            row, cell = [], []
+        else:
+            cell.append(ch)
+        i += 1
+    if cell or row:
+        row.append("".join(cell))
+        rows.append(row)
+    width = max((len(r) for r in rows), default=0)
+    for r in rows:
+        r.extend([""] * (width - len(r)))
+    return rows
+
+
+def _col_name(index):
+    """0-based column index to its letters: 0 is A, 26 is AA."""
+    name, number = "", index + 1
+    while number:
+        number, rem = divmod(number - 1, 26)
+        name = chr(65 + rem) + name
+    return name
+
+
+def _display_width(text):
+    """Width of the longest line in columns; East Asian wide characters take two."""
+    return max((sum(2 if unicodedata.east_asian_width(ch) in "WF" else 1 for ch in line)
+                for line in text.split("\n")), default=0)
+
+
+def _sheet_name(title):
+    """A worksheet name: no []:*?/\\, at most 31 characters, not 'History' (Excel reserves it)."""
+    name = re.sub(r"[\[\]:*?/\\]", " ", title).strip().strip("'")[:31].strip()
+    if not name or name.lower() == "history":
+        return "Table" if name else "Sheet1"
+    return name
+
+
+def build_xlsx(text, title="Sheet1"):
+    """Return (xlsx bytes, notes) for CSV text. notes counts what had to change to fit the format."""
+    rows = parse_csv(text) or [[""]]
+    if len(rows) > XLSX_MAX_ROWS:
+        raise ExportError("The table has {:,} rows. An Excel sheet holds {:,}.".format(len(rows), XLSX_MAX_ROWS))
+    width = len(rows[0])
+    if width > XLSX_MAX_COLS:
+        raise ExportError("The table has {:,} columns. An Excel sheet holds {:,}.".format(width, XLSX_MAX_COLS))
+
+    notes = {"cut": 0, "cleaned": 0}
+    widths = [XLSX_MIN_WIDTH] * width
+    sheet_rows = []
+    for r_index, row in enumerate(rows, 1):
+        cells = []
+        for c_index, value in enumerate(row):
+            # Line endings are normalised; characters XML cannot carry are dropped; long cells are cut.
+            clean = _XML_BAD.sub("", value.replace("\r\n", "\n").replace("\r", "\n"))
+            if clean != value:
+                notes["cleaned"] += 1
+            if len(clean) > XLSX_MAX_CELL:
+                clean = clean[:XLSX_MAX_CELL]
+                notes["cut"] += 1
+            if not clean:
+                continue
+            style = ' s="1"' if r_index == 1 else ""   # bold header row
+            # Every value is written as text, never as a formula, so "=1+1" stays as typed.
+            # Text also keeps "007" and long IDs exactly as they were.
+            cells.append('<c r="{}{}"{} t="inlineStr"><is><t xml:space="preserve">{}</t></is></c>'.format(
+                _col_name(c_index), r_index, style, escape(clean)))
+            widths[c_index] = max(widths[c_index], _display_width(clean) + 2)
+        sheet_rows.append('<row r="{}">{}</row>'.format(r_index, "".join(cells)))
+
+    cols = "".join('<col min="{0}" max="{0}" width="{1}" customWidth="1"/>'.format(
+        i, min(w, XLSX_MAX_WIDTH)) for i, w in enumerate(widths, 1))
+    sheet = (
+        _XML_HEAD + '<worksheet xmlns="{}" xmlns:r="{}">'.format(_NS_MAIN, _NS_REL) +
+        '<dimension ref="A1:{}{}"/>'.format(_col_name(width - 1), len(rows)) +
+        '<sheetViews><sheetView workbookViewId="0">'
+        '<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>'
+        '<selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView></sheetViews>'
+        '<sheetFormatPr defaultRowHeight="15"/><cols>' + cols + "</cols>" +
+        "<sheetData>" + "".join(sheet_rows) + "</sheetData></worksheet>")
+    name = escape(_sheet_name(title), {'"': "&quot;"})
+    parts = {
+        "[Content_Types].xml": _XML_HEAD +
+            '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            '<Default Extension="xml" ContentType="application/xml"/>'
+            '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+            '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+            '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+            "</Types>",
+        "_rels/.rels": _XML_HEAD + '<Relationships xmlns="{}"><Relationship Id="rId1" Type="{}/officeDocument" '
+            'Target="xl/workbook.xml"/></Relationships>'.format(_NS_PKG, _NS_REL),
+        "xl/workbook.xml": _XML_HEAD + '<workbook xmlns="{}" xmlns:r="{}"><sheets>'
+            '<sheet name="{}" sheetId="1" r:id="rId1"/></sheets></workbook>'.format(_NS_MAIN, _NS_REL, name),
+        "xl/_rels/workbook.xml.rels": _XML_HEAD + '<Relationships xmlns="{}">'
+            '<Relationship Id="rId1" Type="{}/worksheet" Target="worksheets/sheet1.xml"/>'
+            '<Relationship Id="rId2" Type="{}/styles" Target="styles.xml"/></Relationships>'.format(
+                _NS_PKG, _NS_REL, _NS_REL),
+        "xl/styles.xml": _XML_HEAD + '<styleSheet xmlns="{}">'
+            '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font>'
+            '<font><b/><sz val="11"/><name val="Calibri"/></font></fonts>'
+            '<fills count="2"><fill><patternFill patternType="none"/></fill>'
+            '<fill><patternFill patternType="gray125"/></fill></fills>'
+            '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'
+            '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+            '<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+            '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>'
+            '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
+            "</styleSheet>".format(_NS_MAIN),
+        "xl/worksheets/sheet1.xml": sheet,
+    }
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for part, body in parts.items():
+            zf.writestr(part, body.encode("utf-8"))
+    return buf.getvalue(), notes
+
+
+# --------------------------------------------------------------------------- #
 # Main window
 # --------------------------------------------------------------------------- #
 def first_icon(*names):
@@ -367,6 +557,7 @@ class NotemarkWindow(Gtk.ApplicationWindow):
         save_section = Gio.Menu()
         save_section.append("Save As…", "app.save-as")
         save_section.append("Export HTML…", "app.export-html")
+        save_section.append("Export Excel…", "app.export-excel")
         menu.append_section(None, save_section)
         section = Gio.Menu()
         section.append("Settings", "app.settings")
@@ -868,6 +1059,53 @@ class NotemarkWindow(Gtk.ApplicationWindow):
         except OSError as exc:
             self.error("Could not export", str(exc))
 
+    def export_excel(self):
+        doc = self.current
+        if doc is None:
+            return
+        if doc.kind != "csv":
+            self.notify("Excel export works on CSV tables")
+            return
+        dlg = Gtk.FileChooserNative.new("Export Excel", self, Gtk.FileChooserAction.SAVE, "_Export", "_Cancel")
+        dlg.set_do_overwrite_confirmation(True)
+        base = os.path.splitext(doc.name)[0]
+        dlg.set_current_name(base + ".xlsx")
+        if doc.path:
+            dlg.set_current_folder(os.path.dirname(doc.path))
+        f = Gtk.FileFilter()
+        f.set_name("Excel workbook")
+        f.add_pattern("*.xlsx")
+        dlg.add_filter(f)
+        if dlg.run() != Gtk.ResponseType.ACCEPT:
+            dlg.destroy()
+            return
+        path = dlg.get_filename()
+        dlg.destroy()
+        if not path.lower().endswith(".xlsx"):
+            path += ".xlsx"
+        doc.request_content(lambda text: self._write_xlsx(path, text, base))
+
+    def _write_xlsx(self, path, text, title):
+        try:
+            data, notes = build_xlsx(text, title)
+        except ExportError as exc:
+            self.error("Could not export", str(exc))
+            return
+        try:
+            with open(path, "wb") as fh:
+                fh.write(data)
+        except OSError as exc:
+            self.error("Could not export", str(exc))
+            return
+        done = "Exported " + os.path.basename(path)
+        if notes["cut"]:
+            done += ". {} cell{} cut to Excel's {:,}-character limit".format(
+                notes["cut"], "" if notes["cut"] == 1 else "s", XLSX_MAX_CELL)
+        if notes["cleaned"]:
+            done += ". {} cell{} had characters Excel cannot store, which were removed".format(
+                notes["cleaned"], "" if notes["cleaned"] == 1 else "s")
+        self.notify(done, 4000)
+
     @staticmethod
     def _add_filters(dlg):
         f = Gtk.FileFilter()
@@ -1188,6 +1426,7 @@ class NotemarkApp(Gtk.Application):
             "save": (lambda: self.active().save(), ["<Primary>s"]),
             "save-as": (lambda: self.active().save_as(), ["<Primary><Shift>s"]),
             "export-html": (lambda: self.active().export_html(), []),
+            "export-excel": (lambda: self.active().export_excel(), []),
             "close-tab": (lambda: self.active().close_current(), ["<Primary>w"]),
             "next-tab": (lambda: self.active().next_tab(+1), ["<Primary>Tab", "<Primary>Page_Down"]),
             "prev-tab": (lambda: self.active().next_tab(-1), ["<Primary><Shift>Tab", "<Primary>Page_Up", "<Primary><Shift>ISO_Left_Tab"]),

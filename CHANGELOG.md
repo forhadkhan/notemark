@@ -11,6 +11,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Right-click menu in the CSV table: insert a row above or below, insert a column
   left or right, delete the row or the column. Shift+F10 or the Menu key opens it
   from the keyboard, and right-clicking a row number works too.
+- File > Export Excel… saves a CSV table as an .xlsx workbook: bold, frozen header
+  row, column widths fitted to the content, every value kept as text.
 
 ### Changed
 

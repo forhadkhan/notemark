@@ -32,6 +32,7 @@ run:
 test:
 	@WEBKIT_DISABLE_COMPOSITING_MODE=1 python3 tests/test_editor.py
 	@python3 tests/test_keys.py
+	@python3 tests/test_xlsx.py
 
 install:
 	install -d $(LIBDIR) $(LIBDIR)/ui $(LIBDIR)/ui/vendor

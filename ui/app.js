@@ -40,7 +40,12 @@
 
   // ---------- CSV table view ----------
   const grid = window.NotemarkCsv.create(document.getElementById("grid"), {
-    onChange(text) { editor.value = text; notifyChange(); },
+    // The first keystroke in a cell turns the title bar dirty at once; the text, counts and caret follow in onChange.
+    onEdit() {
+      rendered = null;
+      if (!reportedDirty) { reportedDirty = true; send({ type: "changed", dirty: true }); }
+    },
+    onChange(text) { editor.value = text; rendered = null; notifyChange(); },
     copy(text, note) { send({ type: "copy", text, note }); },
   });
 
@@ -153,52 +158,320 @@
     return p;
   }
 
-  function renderHtml(markdown) {
-    const body = sanitize(marked.parse(markdown));
+  // marked.parse is quadratic in WebKit, so long documents are parsed in chunks (see mdchunk.js).
+  // With `lists`, the block tokens of every chunk are collected there, for mapBlocks.
+  function renderHtml(markdown, lists) {
+    const parse = lists ? src => { const toks = marked.lexer(src); lists.push(toks); return marked.parser(toks); } : marked.parse;
+    const body = sanitize(window.NotemarkChunk.parse(markdown, parse));
     decorate(body);
     return body;
   }
 
+  // What the page last showed: the Markdown and the kind it was rendered from. Cleared by any edit in the page,
+  // because the DOM is then the truth and may differ from a fresh render of the same text.
+  let rendered = null;
+
   function renderPage() {
-    if (kind === "csv") { grid.load(editor.value); pageDirty = false; return; }
-    const body = renderHtml(editor.value);
+    const key = kind + "\n" + editor.value;
+    if (rendered === key && !pageDirty) return;
+    if (kind === "csv") { grid.load(editor.value); pageDirty = false; rendered = key; return; }
+    const lists = [];
+    const body = renderHtml(editor.value, lists);
+    hideCopy();
+    observer.disconnect();   // the swap below is not an edit
     page.replaceChildren(...Array.from(body.childNodes));
     if (!page.firstElementChild) page.appendChild(emptyParagraph());
+    mapBlocks(editor.value, lists);
     pageDirty = false;
+    rendered = key;
+  }
+
+  // ---------- Incremental page -> Markdown ----------
+  // Turndown over the whole page costs about a second on a 1 MB document and rewrites every block in its own style
+  // (list markers, emphasis, table spacing) as soon as anything is edited. So renderPage remembers, for each top-level
+  // block element, the source text it was rendered from; a MutationObserver notes the blocks that get touched; and
+  // syncFromPage runs Turndown on those alone, keeping the rest of the text byte for byte. Whatever does not line up
+  // (raw HTML blocks, \r, a chunked parse of a document with link definitions, odd top-level nodes, a block that
+  // carries link definitions going away) leaves `mapping` null
+  // or makes incrementalMarkdown return null, and the whole page goes through Turndown as before.
+  //   mapping = { records: WeakMap<Element, record>, dirty: Set<Node>, count, held }
+  //   record  md    the block's text: its source plus the blank lines after it (the first block also the ones before it)
+  //           html  outerHTML when md was recorded, to tell whether the block changed since
+  //           seq   the block's position in the rendered source; untouched blocks with consecutive seq join as they were
+  //           ed    md is Turndown's, not the source's, so a blank line must separate it from its neighbours
+  //           bmd, bhtml  md and html as rendered: a block edited and then undone gets its source text back
+  //           keep  link reference definitions that follow the block in the source (they must survive: see `held`)
+  const BLOCK_TAGS = /^(P|H[1-6]|UL|OL|PRE|BLOCKQUOTE|TABLE|HR|DIV)$/;
+  const TOKEN_TAGS = { code: "PRE", blockquote: "BLOCKQUOTE", table: "TABLE", hr: "HR" };
+  const OBSERVE = { subtree: true, childList: true, characterData: true, attributes: true };
+  const observer = new MutationObserver(list => noteMutations(list));
+  const scratch = document.createElement("div");
+  let mapping = null;
+
+  // A fence that is never closed swallows whatever is written after it, so the block cannot be kept apart from its end.
+  function closedFence(raw) {
+    const lines = raw.replace(/\n+$/, "").split("\n");
+    const open = /^ {0,3}(`{3,}|~{3,})/.exec(lines[0]);
+    const close = /^ {0,3}(`{3,}|~{3,})[ \t]*$/.exec(lines[lines.length - 1]);
+    return lines.length > 1 && !!open && !!close && close[1][0] === open[1][0] && close[1].length >= open[1].length;
+  }
+
+  const tokenTag = t => t.type === "heading" ? "H" + t.depth : t.type === "paragraph" ? "P" : t.type === "list" ? (t.ordered ? "OL" : "UL") : TOKEN_TAGS[t.type];
+
+  /** Pair the top-level elements just rendered from `markdown` with the tokens (`lists`, per chunk) they came from. */
+  function mapBlocks(markdown, lists) {
+    mapping = null;
+    try {
+      if (markdown.includes("\r")) return;
+      const starts = [], tags = [], keeps = [];
+      let pos = 0, defs = 0;
+      for (const toks of lists) {
+        for (const t of toks) {
+          // The raw texts must tile the source exactly: that is what lets untouched blocks be copied back verbatim.
+          // (Chunks that got copies of the document's definitions, see mdchunk.js, do not tile: marked drops the duplicates.)
+          if (!markdown.startsWith(t.raw, pos)) return;
+          if (t.type === "def") {
+            if (!starts.length) return;
+            if (keeps[keeps.length - 1] < 0) keeps[keeps.length - 1] = pos;
+            defs++;
+          } else if (t.type !== "space") {
+            const tag = tokenTag(t);
+            if (!tag || (t.type === "code" && t.codeBlockStyle !== "indented" && !closedFence(t.raw))) return;
+            starts.push(pos); tags.push(tag); keeps.push(-1);
+          }
+          pos += t.raw.length;
+        }
+      }
+      // A definition inside a quote or list applies to the whole document and would go with its block.
+      if (pos !== markdown.length || !starts.length) return;
+      if (markdown.includes("]:") && (markdown.match(/^[ \t>*+\-\d.]*\[[^\]\n]+\]:[ \t]*\S/gm) || []).length !== defs) return;
+      const els = Array.from(page.children);
+      const spare = els.length - starts.length;   // decorate adds an empty paragraph to type into after a final table, code block...
+      if (spare < 0 || spare > 1 || (spare && !(els[els.length - 1].nodeName === "P" && !els[els.length - 1].textContent))) return;
+      for (let i = 0; i < starts.length; i++) if (els[i].nodeName !== tags[i]) return;
+      const records = new WeakMap();
+      let held = 0;
+      for (let i = 0; i < starts.length; i++) {
+        const end = i + 1 < starts.length ? starts[i + 1] : markdown.length;
+        const keep = keeps[i] < 0 ? "" : markdown.slice(keeps[i], end);
+        if (keep) held++;
+        const md = markdown.slice(i ? starts[i] : 0, end), html = els[i].outerHTML;
+        records.set(els[i], { md, html, seq: i, keep, ed: false, bmd: md, bhtml: html });
+      }
+      if (spare) {
+        const html = els[els.length - 1].outerHTML;
+        records.set(els[els.length - 1], { md: "", html, seq: -1, keep: "", ed: false, bmd: "", bhtml: html });
+      }
+      mapping = { records, dirty: new Set(), count: starts.length, held };
+      observer.observe(page, OBSERVE);
+    } catch (e) {
+      mapping = null;
+    }
+  }
+
+  /** The top-level block holding each mutated node is touched; a block put into #page counts as new. */
+  function noteMutations(list) {
+    const dirty = mapping && mapping.dirty;
+    if (!dirty) return;
+    for (const m of list) {
+      let n = m.target;
+      if (n === page) {
+        if (m.type === "childList") for (const a of m.addedNodes) dirty.add(a);
+        continue;
+      }
+      while (n && n.parentNode !== page) n = n.parentNode;   // null once the node has left the page
+      if (n) dirty.add(n);
+    }
+  }
+
+  const tidy = s => s.replace(/ /g, " ").replace(/\n{3,}/g, "\n\n").replace(/[ \t]+$/gm, m => m.length >= 2 ? "  " : "");
+
+  /** Turndown for one top-level block, as it would come out within the whole page. */
+  function blockMarkdown(el) {
+    scratch.replaceChildren(el.cloneNode(true));
+    const md = tidy(turndown.turndown(scratch)).replace(/^\n+/, "");
+    scratch.replaceChildren();
+    return md;
+  }
+
+  /** `s` ending in a blank line. */
+  function blankAfter(s) {
+    let n = 0;
+    while (n < 2 && s.charCodeAt(s.length - 1 - n) === 10) n++;
+    return n < 2 ? s + "\n".repeat(2 - n) : s;
+  }
+
+  /** Make `parts` end in a blank line. */
+  function padBlank(parts) {
+    parts[parts.length - 1] = blankAfter(parts[parts.length - 1]);
+  }
+
+  /**
+   * Whether `md`, a block kept as it was in the source, still starts a block of its own, of kind `tag`, after `prev`.
+   * A blank line is not always enough: once the paragraph between them is gone, an indented block that followed it
+   * reads as part of a list above, two lists of one kind become one, an unclosed fence swallows what follows. Whatever
+   * the cause, the lexer shows it: there is no token boundary at the join, or the block starting there is another kind.
+   */
+  function standsAlone(prev, md, tag) {
+    const head = blankAfter(prev);
+    let pos = 0, joined = false;
+    for (const t of marked.lexer(head + md)) {
+      if (pos === head.length) joined = true;
+      if (pos >= head.length && t.type !== "space") return joined && tokenTag(t) === tag;
+      pos += t.raw.length;
+    }
+    return false;
+  }
+
+  function endWithNewline(s) {
+    let e = s.length;
+    while (e > 0 && s.charCodeAt(e - 1) === 10) e--;
+    return s.slice(0, e) + "\n";
+  }
+
+  /** The page as Markdown from the blocks touched since the last time, or null when only a whole-page pass can be trusted. */
+  function incrementalMarkdown(dry) {
+    const map = mapping;
+    if (!map) return null;
+    noteMutations(observer.takeRecords());
+    const { records, dirty } = map;
+    const parts = [], recs = [], edited = [];   // what goes into the text, per non-empty block
+    const changes = [];                          // blocks whose record has to be replaced: [node, rec, state, md]
+    let held = 0, lastSeq = -1, prevSeq = -2, prevEdited = false;
+    for (let node = page.firstChild; node; node = node.nextSibling) {
+      if (node.nodeType !== 1) {
+        if (node.nodeType === 3 && !/[^ \t\n\r]/.test(node.nodeValue)) continue;
+        return null;   // loose text or a comment in #page: Turndown knows how to wrap those
+      }
+      if (!BLOCK_TAGS.test(node.nodeName)) return null;
+      const rec = records.get(node);
+      // state 0: as recorded; 1: edited and then undone back to how it was rendered; 2: serialise it again
+      let state = 2, md, ed = true;
+      if (rec) {
+        const outer = dirty.has(node) ? node.outerHTML : rec.html;
+        if (outer === rec.html) { state = 0; md = rec.md; ed = rec.ed; }
+        else if (outer === rec.bhtml) { state = 1; md = rec.bmd; ed = false; }
+        if (rec.seq >= 0) {
+          if (rec.seq <= lastSeq) return null;   // blocks out of their rendered order: not worth reasoning about
+          lastSeq = rec.seq;
+        }
+        if (rec.keep) held++;
+      }
+      const seq = rec ? rec.seq : -1;
+      // A source block next to something it was not written beside (the block above was edited or removed) may no longer
+      // parse as it did: it is serialised again unless the lexer says it still stands on its own.
+      // The record stays as it is (the block may well be next to its old neighbours again after an undo).
+      const again = state !== 2 && !ed && md && parts.length && (prevEdited || seq < 0 || seq !== prevSeq + 1) &&
+        !standsAlone(parts[parts.length - 1], md, node.nodeName);
+      if (state === 2 || again) {
+        md = blockMarkdown(node);
+        if (rec && rec.keep) md = md ? md + "\n\n" + rec.keep : rec.keep;
+        ed = true;
+      }
+      if (state) changes.push(node, rec, state, md);
+      if (!md) continue;
+      // Untouched blocks that were neighbours in the source join as they were; anything else gets a blank line between.
+      if (parts.length && (ed || prevEdited || seq < 0 || seq !== prevSeq + 1)) padBlank(parts);
+      parts.push(md); recs.push(rec); edited.push(ed);
+      prevEdited = ed; prevSeq = seq;
+    }
+    if (held !== map.held) return null;   // a block with link definitions is gone
+    const n = parts.length;
+    if (n) {
+      if (edited[0] || recs[0].seq !== 0) parts[0] = parts[0].replace(/^\n+/, "");
+      if (edited[n - 1] || recs[n - 1].seq !== map.count - 1) parts[n - 1] = endWithNewline(parts[n - 1]);
+    }
+    const md = parts.join("");
+    if (dry) return md;
+    // The records keep each block's own text: the blank lines padBlank added and the ends cut above are not part of it.
+    for (let i = 0; i < changes.length; i += 4) {
+      const node = changes[i], rec = changes[i + 1], state = changes[i + 2];
+      records.set(node, state === 1
+        ? { md: rec.bmd, html: rec.bhtml, seq: rec.seq, keep: rec.keep, ed: false, bmd: rec.bmd, bhtml: rec.bhtml }
+        : { md: changes[i + 3], html: node.outerHTML, seq: rec ? rec.seq : -1, keep: rec ? rec.keep : "", ed: true, bmd: rec ? rec.bmd : "", bhtml: rec ? rec.bhtml : "" });
+    }
+    dirty.clear();
+    return md;
+  }
+
+  function fullMarkdown() {
+    let md = tidy(turndown.turndown(page)).replace(/^\n+/, "");
+    if (md && !md.endsWith("\n")) md += "\n";
+    if (!md.trim()) md = "";
+    return md;
   }
 
   /** Convert the page DOM back into Markdown and store it as the canonical text. */
   function syncFromPage() {
     clearTimeout(syncTimer);
     if (!pageDirty || kind === "csv") return;
-    let md = turndown.turndown(page).replace(/\u00a0/g, " ").replace(/\n{3,}/g, "\n\n").replace(/[ \t]+$/gm, m => m.length >= 2 ? "  " : "");
-    md = md.replace(/^\n+/, "");
-    if (md && !md.endsWith("\n")) md += "\n";
-    if (!md.trim()) md = "";
-    editor.value = md;
+    let md = null;
+    try {
+      md = incrementalMarkdown();
+    } catch (e) {
+      mapping = null;
+      observer.disconnect();
+    }
+    editor.value = md === null ? fullMarkdown() : md;
     pageDirty = false;
   }
 
   function scheduleSync() {
     pageDirty = true;
+    rendered = null;
     clearTimeout(syncTimer);
     syncTimer = setTimeout(() => { syncFromPage(); notifyChange(); }, 150);
   }
 
   // ---------- Text helpers ----------
+  // Same set as the regex \s: ASCII whitespace, no-break space, and the Unicode space separators.
+  function isSpace(c) {
+    return c === 32 || (c >= 9 && c <= 13) || (c >= 0xa0 && (c === 0xa0 || c === 0x1680 || (c >= 0x2000 && c <= 0x200a) ||
+      c === 0x2028 || c === 0x2029 || c === 0x202f || c === 0x205f || c === 0x3000 || c === 0xfeff));
+  }
+
+  // Runs of non-whitespace characters, i.e. what text.trim().split(/\s+/).length gave, without building the pieces.
   function countWords(text) {
-    const t = text.trim();
-    return t ? t.split(/\s+/).length : 0;
+    let n = 0, inWord = false;
+    for (let i = 0, len = text.length; i < len; i++) {
+      const space = isSpace(text.charCodeAt(i));
+      if (!space && !inWord) n++;
+      inWord = !space;
+    }
+    return n;
   }
 
   function currentText() {
     syncFromPage();
+    if (kind === "csv") grid.flush();   // the table rebuilds its text a moment after typing
     return editor.value;
   }
 
-  function notifyChange() {
+  // What the host was last told, so a keystroke can raise the dirty flag at once and leave the rest for later.
+  let reportedDirty = false;
+  let flushTimer = 0;      // trailing flush of counts, dirty and caret after typing in the source editor
+  let cursorTimer = 0;     // caret moves that are not edits (arrows, clicks, focus)
+  let lastCursor = "";     // "line:col" the host already has
+  const REPORT_MS = 120;
+
+  /** Send the document state: dirty flag and counts, plus the caret when asked (source typing). */
+  function notifyChange(withCursor) {
+    clearTimeout(flushTimer);
+    flushTimer = 0;
     const text = currentText();
-    send({ type: "changed", dirty: text !== savedText, words: countWords(text), chars: text.length });
+    reportedDirty = text !== savedText;
+    const msg = { type: "changed", dirty: reportedDirty, words: countWords(text), chars: text.length };
+    if (withCursor && mode !== "page") {
+      const cur = caretPosition();
+      if (cur.key !== lastCursor) { lastCursor = cur.key; msg.line = cur.line; msg.col = cur.col; }
+    }
+    send(msg);
+  }
+
+  /** Bring the host up to date now if a keystroke's report is still waiting. */
+  function flushReport() {
+    grid.flush();
+    if (flushTimer) notifyChange(true);
   }
 
   // ---------- Source editor ----------
@@ -286,7 +559,13 @@
       clearTimeout(renderTimer);
       renderTimer = setTimeout(renderPage, 120);
     }
-    notifyChange();
+    // The title bar and tab dot turn on with the first keystroke; counts and caret follow after a short pause,
+    // at most one message per REPORT_MS however fast the typing.
+    if (!reportedDirty) {
+      reportedDirty = true;
+      send({ type: "changed", dirty: true });
+    }
+    if (!flushTimer) flushTimer = setTimeout(() => notifyChange(true), REPORT_MS);
   }
 
   // ---------- WYSIWYG page ----------
@@ -635,7 +914,8 @@
     const text = ev.clipboardData && ev.clipboardData.getData("text/plain");
     if (!text) return;
     ev.preventDefault();
-    if (/\n/.test(text) || /^(#{1,6} |[-*+] |\d+\. |> |```)/m.test(text) || /\[.+\]\(.+\)|\*\*.+\*\*/.test(text)) {
+    const at = getSelection().anchorNode, inCode = !!(at && (at.nodeType === 1 ? at : at.parentElement).closest("pre"));   // code stays text
+    if (!inCode && (/\n/.test(text) || /^(#{1,6} |[-*+] |\d+\. |> |```)/m.test(text) || /\[.+\]\(.+\)|\*\*.+\*\*/.test(text))) {
       const body = sanitize(marked.parse(text));
       decorate(body);
       document.execCommand("insertHTML", false, body.innerHTML);
@@ -679,6 +959,80 @@
     if (!last || /^(PRE|TABLE|HR|UL|OL|BLOCKQUOTE)$/.test(last.nodeName)) { last = emptyParagraph(); page.appendChild(last); scheduleSync(); }
     page.focus();
     placeCaret(last, true);
+  }
+
+  // ---------- Copy button on code blocks ----------
+  // One floating button, outside #page so Turndown and the HTML export never see it. It follows the pointer
+  // from block to block and sits over the top-right corner of the hovered <pre>.
+  const copyBtn = document.getElementById("code-copy");
+  let copyPre = null;      // the <pre> the button is showing for
+  let copyHideTimer = null;
+  let copiedTimer = null;
+
+  function codeText(pre) {
+    const code = pre.querySelector("code") || pre;
+    // Typed blocks hold <br> for line breaks (and a lone <br> as the empty-block placeholder).
+    let out = "";
+    (function walk(node) {
+      for (const n of Array.from(node.childNodes)) {
+        if (n.nodeType === 3) out += n.nodeValue;
+        else if (n.nodeName === "BR") { if (n.nextSibling || n.parentNode !== code) out += "\n"; }
+        else walk(n);
+      }
+    })(code);
+    return out;
+  }
+
+  function placeCopy() {
+    if (!copyPre || !copyPre.isConnected) { hideCopy(); return; }
+    const r = copyPre.getBoundingClientRect(), pane = pagePane.getBoundingClientRect();
+    if (r.bottom < pane.top + 28 || r.top > pane.bottom - 8) { copyBtn.hidden = true; return; }
+    copyBtn.hidden = false;
+    copyBtn.style.top = Math.max(r.top, pane.top) + 6 + "px";
+    copyBtn.style.left = Math.min(r.right, pane.right - 12) - copyBtn.offsetWidth - 8 + "px";
+  }
+
+  function hideCopy() {
+    clearTimeout(copyHideTimer);
+    copyPre = null;
+    copyBtn.hidden = true;
+  }
+
+  function hideCopySoon() {
+    clearTimeout(copyHideTimer);
+    copyHideTimer = setTimeout(hideCopy, 250);   // long enough to travel from the block onto the button
+  }
+
+  function onPageOver(ev) {
+    const pre = kind === "md" && ev.target.closest ? ev.target.closest("pre") : null;
+    if (!pre || !page.contains(pre)) { if (copyPre) hideCopySoon(); return; }
+    clearTimeout(copyHideTimer);
+    if (pre !== copyPre) { copyPre = pre; resetCopyLabel(); }
+    placeCopy();
+  }
+
+  function resetCopyLabel() {
+    clearTimeout(copiedTimer);
+    copyBtn.textContent = "Copy";
+    copyBtn.classList.remove("copied");
+  }
+
+  // The host owns the clipboard (navigator.clipboard is not reliable on a file:// page); outside the host, fall back to it.
+  function copyToClipboard(text) {
+    const host = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.app;
+    if (host) { send({ type: "copy", text, note: "Copied the code block" }); return Promise.resolve(); }
+    if (navigator.clipboard) return navigator.clipboard.writeText(text);
+    return Promise.reject(new Error("no clipboard"));
+  }
+
+  function onCopyClick() {
+    if (!copyPre) return;
+    copyToClipboard(codeText(copyPre)).then(() => {
+      copyBtn.textContent = "Copied";
+      copyBtn.classList.add("copied");
+      clearTimeout(copiedTimer);
+      copiedTimer = setTimeout(resetCopyLabel, 1500);
+    }, () => {});
   }
 
   // ---------- Undo / redo ----------
@@ -754,11 +1108,41 @@
     if (atStart) placeCaret(page.firstElementChild || page, false);
   }
 
+  function countNewlines(s, from, to) {
+    let n = 0, i = s.indexOf("\n", from);
+    while (i !== -1 && i < to) { n++; i = s.indexOf("\n", i + 1); }
+    return n;
+  }
+
+  // The line is remembered together with the text and offset it was counted at. After an edit or a caret move
+  // only the stretch between the old and the new offset is scanned, as long as the text before it is unchanged.
+  let lineMemo = { text: "", pos: 0, line: 1 };
+
+  function caretPosition() {
+    const text = editor.value, pos = editor.selectionStart, memo = lineMemo;
+    const k = Math.min(pos, memo.pos);
+    let line;
+    if (memo.text === text || text.startsWith(memo.text.slice(0, k))) {
+      line = memo.line - countNewlines(memo.text, k, memo.pos) + countNewlines(text, k, pos);
+    } else {
+      line = 1 + countNewlines(text, 0, pos);
+    }
+    lineMemo = { text, pos, line };
+    const col = pos - (pos ? text.lastIndexOf("\n", pos - 1) : -1);
+    return { line, col, key: line + ":" + col };
+  }
+
+  /** Caret moves that are not edits: one message per pause, and none when the host already has the position. */
   function reportCursor() {
-    if (mode === "page") return;
-    const before = editor.value.slice(0, editor.selectionStart);
-    const nl = before.lastIndexOf("\n");
-    send({ type: "cursor", line: before.split("\n").length, col: before.length - nl });
+    if (mode === "page" || cursorTimer) return;
+    cursorTimer = setTimeout(() => {
+      cursorTimer = 0;
+      if (flushTimer || mode === "page") return;   // a pending report carries the caret
+      const cur = caretPosition();
+      if (cur.key === lastCursor) return;
+      lastCursor = cur.key;
+      send({ type: "cursor", line: cur.line, col: cur.col });
+    }, 50);
   }
 
   // ---------- Public API for the host ----------
@@ -775,6 +1159,7 @@
       api.setMode(opts.mode || "page", true);
     },
     load(text, opts) {
+      grid.flush();   // a pending table report must not land on the new text
       api.setKind(opts && opts.kind);
       editor.value = text || "";
       savedText = opts && typeof opts.saved === "string" ? opts.saved : editor.value;
@@ -790,11 +1175,12 @@
       }
       notifyChange();
     },
-    markClean() {
-      savedText = currentText();
+    markClean(text) {     // text: what was written; anything typed since is still unsaved
+      savedText = typeof text === "string" ? text : currentText();
       notifyChange();
     },
     sendContent() {
+      flushReport();
       send({ type: "content", text: currentText() });
     },
     sendHtml(title) {
@@ -826,7 +1212,9 @@
     setTheme(theme) { html.dataset.theme = theme === "dark" ? "dark" : "light"; },
     setMode(next, quiet) {
       if (!["page", "source", "split"].includes(next)) return;
+      flushReport();
       syncFromPage();
+      hideCopy();
       mode = next;
       html.dataset.mode = mode;
       if (mode !== "source") renderPage();
@@ -837,6 +1225,8 @@
     undo() { runHistory(false); },
     redo() { runHistory(true); },
     toMarkdown() { return currentText(); },
+    // For tests: the page as it is now converted incrementally (null when that falls back), as a whole, and one block; stored nowhere.
+    syncProbe: { mapped: () => !!mapping, incremental: () => incrementalMarkdown(true), full: fullMarkdown, block: blockMarkdown },
     getMode() { return mode; },
   };
   window.Notemark = api;
@@ -845,14 +1235,24 @@
   document.addEventListener("keydown", onHistoryKey, true);
   editor.addEventListener("input", onSourceInput);
   editor.addEventListener("keydown", onSourceKeydown);
+  editor.addEventListener("blur", flushReport);
   editor.addEventListener("scroll", () => { if (mode === "split" && syncEnabled) syncScroll(editor, pagePane); });
   pagePane.addEventListener("scroll", () => { if (mode === "split" && syncEnabled) syncScroll(pagePane, editor); });
-  for (const ev of ["keyup", "click", "input", "focus"]) editor.addEventListener(ev, reportCursor);
+  for (const ev of ["keyup", "click", "focus"]) editor.addEventListener(ev, reportCursor);
   divider.addEventListener("mousedown", startResize);
   divider.addEventListener("dblclick", () => { api.setSplit(50); send({ type: "split", pct: 50 }); });
   document.addEventListener("mousemove", onResize);
   document.addEventListener("mouseup", stopResize);
   pagePane.addEventListener("mousedown", onPagePaneMousedown);
+  pagePane.addEventListener("mouseover", onPageOver);
+  pagePane.addEventListener("mouseleave", () => { if (copyPre) hideCopySoon(); });
+  pagePane.addEventListener("scroll", placeCopy);
+  window.addEventListener("resize", placeCopy);
+  page.addEventListener("input", () => { if (copyPre) placeCopy(); });
+  copyBtn.addEventListener("mousedown", ev => ev.preventDefault());   // keep focus and caret in the editor
+  copyBtn.addEventListener("mouseenter", () => clearTimeout(copyHideTimer));
+  copyBtn.addEventListener("mouseleave", hideCopySoon);
+  copyBtn.addEventListener("click", onCopyClick);
   page.addEventListener("beforeinput", onPageBeforeInput);
   page.addEventListener("keydown", onPageKeydown);
   page.addEventListener("input", onPageInput);

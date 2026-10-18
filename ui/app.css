@@ -45,7 +45,7 @@ html[data-theme="dark"] {
 html, body {
   margin: 0; height: 100%;
   background: var(--bg); color: var(--fg);
-  font-family: "Inter", -apple-system, "Segoe UI", "Noto Sans", "Cantarell", "Ubuntu", "Helvetica Neue", sans-serif;
+  font-family: sans-serif;
   font-size: 16px; line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
@@ -75,7 +75,7 @@ body.dragging iframe, body.dragging .pane { pointer-events: none; }
   border: 0; outline: 0; resize: none; overflow: auto;
   padding: 20px 24px; background: var(--editor-bg); color: var(--editor-fg);
   caret-color: var(--accent);
-  font-family: "JetBrains Mono", "Fira Code", "SFMono-Regular", "Noto Sans Mono", "DejaVu Sans Mono", monospace;
+  font-family: monospace;
   font-size: var(--src-size, 14px); line-height: 1.65; tab-size: 2;
   white-space: pre-wrap; overflow-wrap: anywhere;
 }
@@ -156,7 +156,7 @@ html[data-layout="tb"] .page-inner, html[data-layout="bt"] .page-inner { padding
 }
 
 .prose code {
-  font-family: "JetBrains Mono", "Fira Code", "SFMono-Regular", "Noto Sans Mono", "DejaVu Sans Mono", monospace;
+  font-family: monospace;
   font-size: 0.86em;
 }
 .prose :not(pre) > code {
@@ -168,6 +168,17 @@ html[data-layout="tb"] .page-inner, html[data-layout="bt"] .page-inner { padding
   padding: 16px 18px; overflow-x: auto; margin: 0.9em 0; line-height: 1.5;
 }
 .prose pre code { background: transparent; padding: 0; color: inherit; font-size: 0.86em; }
+
+/* Floating "Copy" button over the hovered code block (one element, outside the editable page). */
+#code-copy {
+  position: fixed; z-index: 20; margin: 0;
+  padding: 2px 8px; font: 12px/1.5 sans-serif; color: var(--muted);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+  opacity: 0.75; cursor: pointer; user-select: none; -webkit-user-select: none;
+}
+#code-copy[hidden] { display: none; }
+#code-copy:hover { opacity: 1; color: var(--fg); }
+#code-copy.copied { opacity: 1; color: var(--accent); border-color: var(--accent); }
 
 .prose table { border-collapse: collapse; width: 100%; margin: 0.9em 0; font-size: 0.95em; display: block; overflow-x: auto; }
 .prose th, .prose td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; vertical-align: top; }
@@ -202,8 +213,9 @@ html[data-kind="csv"] #page-pane { display: flex; flex-direction: column; overfl
 }
 .grid-filter:focus { border-color: var(--accent); background: var(--bg); }
 .grid-info { font-size: 12px; color: var(--muted); padding-left: 10px; white-space: nowrap; }
-.grid-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
-.grid-table { border-collapse: separate; border-spacing: 0; font-size: 14px; min-width: 100%; }
+.grid-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; overflow-anchor: none; }
+.grid-table { border-collapse: separate; border-spacing: 0; table-layout: fixed; font-size: 14px; min-width: 100%; }
+.grid-table .vs td { height: 0; padding: 0; border: 0; min-width: 0; }   /* stand-ins for the rows outside the window */
 .grid-table th, .grid-table td {
   border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
   padding: 0; min-width: 110px; max-width: 420px; vertical-align: top; text-align: left;
@@ -216,6 +228,10 @@ html[data-kind="csv"] #page-pane { display: flex; flex-direction: column; overfl
 .grid-table thead .rownum { z-index: 3; }
 .grid-table .cell { display: block; padding: 5px 10px; min-height: 2em; outline: none; white-space: pre-wrap; overflow-wrap: anywhere; cursor: text; }
 .grid-table .sel { background: color-mix(in srgb, var(--accent) 12%, transparent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+/* The sticky header must stay opaque: the selected header cell lays its tint over the header colour, not over the rows scrolling beneath. */
+.grid-table thead th.sel {
+  background: linear-gradient(color-mix(in srgb, var(--accent) 12%, transparent), color-mix(in srgb, var(--accent) 12%, transparent)), var(--table-head);
+}
 .th-in { display: flex; align-items: flex-start; }
 .th-in .cell { flex: 1; min-width: 0; }
 .sort-btn {

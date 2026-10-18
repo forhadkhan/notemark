@@ -37,7 +37,7 @@ APP_ID = os.environ.get("NOTEMARK_APP_ID") or DEFAULT_APP_ID
 if not Gio.Application.id_is_valid(APP_ID):
     APP_ID = DEFAULT_APP_ID
 APP_NAME = "Notemark"
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 UI_INDEX = os.path.join(HERE, "ui", "index.html")

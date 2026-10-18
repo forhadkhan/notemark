@@ -6,6 +6,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-18
+
 ### Added
 
 - Right-click menu in the CSV table: insert a row above or below, insert a column
@@ -13,12 +15,38 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   from the keyboard, and right-clicking a row number works too.
 - File > Export Excel… saves a CSV table as an .xlsx workbook: bold, frozen header
   row, column widths fitted to the content, every value kept as text.
+- A Copy button appears at the top-right of a code block when you hover it, in page
+  mode and in the rendered half of split mode. It copies the code only and never
+  ends up in the saved Markdown.
+- Notemark notices when an open file changes on disk and shows a bar with a Reload
+  button, like the default Ubuntu text editor. If you have unsaved changes the bar
+  says so, and nothing is reloaded behind your back. A deleted or moved file offers
+  Save As. File > Reload from Disk does it by hand.
+- Opening a file while Notemark is already running opens it as a tab in that window
+  instead of starting a second copy.
 
 ### Changed
 
 - CSV toolbar: "Add row", "Add column", "Delete row" and "Delete column" now use
   plus and minus icons. Delete row no longer removes the first data row when the
   header is selected.
+- Much faster: a window shows its document about four times sooner, a restored tab
+  opens in about a third of the time, and only the active tab loads at start-up.
+- Large files: Markdown is parsed in blocks, so a 150 KB file opens in about 0.3 s
+  and a 1 MB file in a couple of seconds instead of a minute or more. Switching
+  between modes no longer re-renders an unchanged document.
+- Editing a rendered page only converts the blocks you touched back to Markdown, so
+  the rest of the file stays exactly as you wrote it, and saving a large file is
+  instant.
+- The CSV table draws only the rows in view, so large sheets scroll smoothly and
+  open at once. Typing in source mode and Export Excel no longer freeze the window
+  on large files.
+
+### Fixed
+
+- Ctrl+Shift+N opens a window with a blank tab instead of an empty window.
+- The selected header cell in the CSV table is opaque, so rows no longer show
+  through it while scrolling.
 
 ## [0.2.0] - 2026-10-13
 
@@ -90,5 +118,6 @@ First public release.
   `~/.config/notemark/settings.json`.
 - Packaging as a Debian package, an AppImage and a portable tarball.
 
+[0.3.0]: https://github.com/forhadkhan/notemark/releases/tag/v0.3.0
 [0.2.0]: https://github.com/forhadkhan/notemark/releases/tag/v0.2.0
 [0.1.0]: https://github.com/forhadkhan/notemark/releases/tag/v0.1.0

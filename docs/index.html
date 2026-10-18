@@ -60,7 +60,7 @@
         <a class="btn btn-primary" href="#install">Install <svg class="ico" aria-hidden="true"><use href="#i-chevron"/></svg></a>
         <a class="btn" href="https://github.com/forhadkhan/notemark">GitHub</a>
       </div>
-      <p class="meta">Version 0.2.0 &middot; MIT licence &middot; Debian, Ubuntu, AppImage and portable tarball</p>
+      <p class="meta">Version 0.3.0 &middot; MIT licence &middot; Debian, Ubuntu, AppImage and portable tarball</p>
     </div>
   </section>
 
@@ -126,22 +126,22 @@ sudo rm /etc/apt/sources.list.d/notemark.list /usr/share/keyrings/notemark.gpg</
         <div class="panel" role="tabpanel" id="panel-deb" aria-labelledby="tab-deb" hidden>
           <h3>.deb from GitHub releases</h3>
           <p>Download <code>notemark_&lt;version&gt;_all.deb</code> from the <a href="https://github.com/forhadkhan/notemark/releases/latest">latest release</a> and install it:</p>
-          <div class="code"><button class="copy" type="button" aria-label="Copy command"><svg class="ico ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="ico ico-check" aria-hidden="true"><use href="#i-check"/></svg><span class="copied" aria-hidden="true">Copied</span></button><pre><code>sudo apt install ./notemark_0.2.0_all.deb</code></pre></div>
+          <div class="code"><button class="copy" type="button" aria-label="Copy command"><svg class="ico ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="ico ico-check" aria-hidden="true"><use href="#i-check"/></svg><span class="copied" aria-hidden="true">Copied</span></button><pre><code>sudo apt install ./notemark_0.3.0_all.deb</code></pre></div>
         </div>
 
         <div class="panel" role="tabpanel" id="panel-appimage" aria-labelledby="tab-appimage" hidden>
           <h3>AppImage (any distribution, no installation)</h3>
           <p>Download <code>Notemark-&lt;version&gt;-x86_64.AppImage</code> from the <a href="https://github.com/forhadkhan/notemark/releases/latest">latest release</a>, make it executable and run it:</p>
-          <div class="code"><button class="copy" type="button" aria-label="Copy commands"><svg class="ico ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="ico ico-check" aria-hidden="true"><use href="#i-check"/></svg><span class="copied" aria-hidden="true">Copied</span></button><pre><code>chmod +x Notemark-0.2.0-x86_64.AppImage
-./Notemark-0.2.0-x86_64.AppImage</code></pre></div>
+          <div class="code"><button class="copy" type="button" aria-label="Copy commands"><svg class="ico ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="ico ico-check" aria-hidden="true"><use href="#i-check"/></svg><span class="copied" aria-hidden="true">Copied</span></button><pre><code>chmod +x Notemark-0.3.0-x86_64.AppImage
+./Notemark-0.3.0-x86_64.AppImage</code></pre></div>
           <p>The AppImage carries Notemark itself and uses GTK, WebKitGTK and PyGObject from the host system. If they are missing it prints the exact package names to install for your distribution.</p>
         </div>
 
         <div class="panel" role="tabpanel" id="panel-tar" aria-labelledby="tab-tar" hidden>
           <h3>Portable tarball (no root, or a portable tree)</h3>
           <p>Download <code>notemark-&lt;version&gt;-linux.tar.gz</code> from the <a href="https://github.com/forhadkhan/notemark/releases/latest">latest release</a>. It runs in place or installs without root:</p>
-          <div class="code"><button class="copy" type="button" aria-label="Copy commands"><svg class="ico ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="ico ico-check" aria-hidden="true"><use href="#i-check"/></svg><span class="copied" aria-hidden="true">Copied</span></button><pre><code>tar -xzf notemark-0.2.0-linux.tar.gz
-cd notemark-0.2.0
+          <div class="code"><button class="copy" type="button" aria-label="Copy commands"><svg class="ico ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="ico ico-check" aria-hidden="true"><use href="#i-check"/></svg><span class="copied" aria-hidden="true">Copied</span></button><pre><code>tar -xzf notemark-0.3.0-linux.tar.gz
+cd notemark-0.3.0
 ./notemark sample.md          # run without installing
 ./install.sh                  # or install into ~/.local
 sudo ./install.sh /usr/local  # or system-wide</code></pre></div>

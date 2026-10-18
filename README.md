@@ -87,7 +87,7 @@ Download `notemark_<version>_all.deb` from the
 install it:
 
 ```bash
-sudo apt install ./notemark_0.2.0_all.deb
+sudo apt install ./notemark_0.3.0_all.deb
 ```
 
 ### AppImage
@@ -95,8 +95,8 @@ sudo apt install ./notemark_0.2.0_all.deb
 Download `Notemark-<version>-x86_64.AppImage`, make it executable and run it:
 
 ```bash
-chmod +x Notemark-0.2.0-x86_64.AppImage
-./Notemark-0.2.0-x86_64.AppImage
+chmod +x Notemark-0.3.0-x86_64.AppImage
+./Notemark-0.3.0-x86_64.AppImage
 ```
 
 The AppImage carries Notemark itself and uses GTK, WebKitGTK and PyGObject from
@@ -109,8 +109,8 @@ Download `notemark-<version>-linux.tar.gz` for a build that runs in place or
 installs without root:
 
 ```bash
-tar -xzf notemark-0.2.0-linux.tar.gz
-cd notemark-0.2.0
+tar -xzf notemark-0.3.0-linux.tar.gz
+cd notemark-0.3.0
 ./notemark sample.md          # run without installing
 ./install.sh                  # or install into ~/.local
 sudo ./install.sh /usr/local  # or system-wide

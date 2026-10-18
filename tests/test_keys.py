@@ -9,7 +9,8 @@ zoom and save shortcuts in page, source and split mode.
 
 Fake key presses go to whatever has the keyboard focus, so this test never runs on
 your own display: it starts a private Xvfb server through xvfb-run and runs inside
-that. It skips (exit 0) when xvfb-run or libXtst is missing.
+that, on a private D-Bus session bus (dbus-run-session) and under its own app id, so it can never join a
+Notemark you have open. It skips (exit 0) when xvfb-run or libXtst is missing.
 
     python3 tests/test_keys.py
 """
@@ -37,8 +38,12 @@ if os.environ.get(PRIVATE) != "1":
     runner = shutil.which("xvfb-run")
     if not runner:
         skip("xvfb-run not found (install xvfb); refusing to send fake keys to your own display")
-    env = dict(os.environ, **{PRIVATE: "1", "GDK_BACKEND": "x11", "WEBKIT_DISABLE_COMPOSITING_MODE": "1"})
-    os.execvpe(runner, [runner, "-a", sys.executable, os.path.abspath(__file__)], env)
+    env = dict(os.environ, **{PRIVATE: "1", "GDK_BACKEND": "x11", "WEBKIT_DISABLE_COMPOSITING_MODE": "1",
+                              "NOTEMARK_APP_ID": "com.forhadkhan.Notemark.Test"})
+    cmd = [runner, "-a", sys.executable, os.path.abspath(__file__)]
+    import private_bus
+    private_bus.rerun(cmd, env)
+    os.execvpe(runner, cmd, env)        # no dbus-run-session: the private app id still keeps it apart
 
 SANDBOX = tempfile.mkdtemp(prefix="notemark-keys-")
 atexit.register(shutil.rmtree, SANDBOX, ignore_errors=True)
@@ -52,6 +57,8 @@ import gi  # noqa: E402
 
 gi.require_version("GdkX11", "3.0")
 import notemark as nm  # noqa: E402
+
+assert nm.APP_ID != nm.DEFAULT_APP_ID, "tests must use a private app id, never the installed Notemark's"
 from gi.repository import Gdk, GLib, GdkX11, Gtk  # noqa: E402,F401
 
 X11 = ctypes.CDLL(xlib_name)

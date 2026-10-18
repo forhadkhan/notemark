@@ -11,6 +11,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
+import types
 import unittest
 import zipfile
 from pathlib import Path
@@ -20,6 +22,7 @@ HERE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(HERE))
 
 import notemark  # noqa: E402
+from gi.repository import GLib  # noqa: E402
 
 NS = {"m": notemark._NS_MAIN}
 
@@ -143,6 +146,100 @@ class SheetNameTests(unittest.TestCase):
         self.assertEqual(notemark._sheet_name("History"), "Table")
         self.assertEqual(notemark._sheet_name(""), "Sheet1")
         self.assertEqual(notemark._sheet_name("'quoted'"), "quoted")
+
+
+class ThreadedExportTests(unittest.TestCase):
+    """The export runs on a worker thread and reports back on the GTK main loop."""
+
+    @staticmethod
+    def run_loop(start):
+        """Call start(done) and run a main loop until done(...) runs; returns what done got, or None on timeout."""
+        loop, got = GLib.MainLoop(), []
+
+        def done(*args):
+            got.append((args, threading.current_thread() is threading.main_thread()))
+            loop.quit()
+        start(done)
+        GLib.timeout_add(20000, loop.quit)
+        loop.run()
+        return got[0] if got else None
+
+    def test_threaded_export_gives_the_same_bytes(self):
+        text = "name,note\n" + "".join("row%d,\"a, b\nc\"\n" % i for i in range(300))
+        want, want_notes = notemark.build_xlsx(text, "people")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = str(Path(tmp) / "out.xlsx")
+            worker = []
+            (args, on_main) = self.run_loop(lambda done: notemark.run_in_thread(
+                lambda: (worker.append(threading.current_thread()), notemark.write_xlsx_file(path, text, "people"))[1], done, "tag"))
+            got = Path(path).read_bytes()
+        self.assertEqual(args, ("tag", want_notes, None))
+        self.assertTrue(on_main)
+        self.assertIsNot(worker[0], threading.main_thread())
+        self.assertEqual(got, want)
+
+    def test_a_refused_export_comes_back_as_the_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "out.xlsx"
+            wide = ",".join(["a"] * (notemark.XLSX_MAX_COLS + 1)) + "\n"
+            (args, _) = self.run_loop(lambda done: notemark.run_in_thread(
+                lambda: notemark.write_xlsx_file(str(path), wide, "t"), done))
+            self.assertFalse(path.exists())
+        self.assertIsNone(args[0])
+        self.assertIsInstance(args[1], notemark.ExportError)
+
+    def test_an_unwritable_path_comes_back_as_an_oserror(self):
+        (args, _) = self.run_loop(lambda done: notemark.run_in_thread(
+            lambda: notemark.write_xlsx_file("/nonexistent-dir/out.xlsx", "a\n", "t"), done))
+        self.assertIsInstance(args[1], OSError)
+
+    def window_stub(self):
+        shown = []
+        win = types.SimpleNamespace(
+            _exporting=False, _closed=False, toast=types.SimpleNamespace(set_reveal_child=lambda *_: None),
+            notify=lambda text, ms=0: shown.append(("notify", text)),
+            error=lambda text, secondary: shown.append(("error", secondary)), seen=shown)
+        win._xlsx_done = types.MethodType(notemark.NotemarkWindow._xlsx_done, win)
+        return win
+
+    def finish(self, win):
+        """Run the main loop until the stub's export has reported back."""
+        loop = GLib.MainLoop()
+        GLib.timeout_add(20000, loop.quit)
+        GLib.timeout_add(20, lambda: loop.quit() if not win._exporting else True)
+        loop.run()
+
+    def test_window_shows_the_same_messages_and_blocks_a_second_export(self):
+        win = self.window_stub()
+        with tempfile.TemporaryDirectory() as tmp:
+            path = str(Path(tmp) / "t.xlsx")
+            text = "a,b\n" + "1,2\n" * 20000
+            notemark.NotemarkWindow._write_xlsx(win, path, text, "t")
+            self.assertTrue(win._exporting)
+            notemark.NotemarkWindow._write_xlsx(win, path, text, "t")      # refused while the first runs
+            self.finish(win)
+            self.assertEqual(Path(path).read_bytes(), notemark.build_xlsx(text, "t")[0])
+        self.assertEqual([k for k, _ in win.seen], ["notify", "notify", "notify"])
+        self.assertIn("already running", win.seen[1][1])
+        self.assertEqual(win.seen[2][1], "Exported t.xlsx")
+
+    def test_window_reports_an_export_error_in_its_dialog(self):
+        win = self.window_stub()
+        wide = ",".join(["a"] * (notemark.XLSX_MAX_COLS + 1)) + "\n"
+        notemark.NotemarkWindow._write_xlsx(win, "/tmp/never-written.xlsx", wide, "t")
+        self.finish(win)
+        self.assertEqual(win.seen[-1][0], "error")
+        self.assertIn("columns", win.seen[-1][1])
+        self.assertFalse(win._exporting)
+
+    def test_a_window_closed_during_the_export_is_left_alone(self):
+        win = self.window_stub()
+        with tempfile.TemporaryDirectory() as tmp:
+            notemark.NotemarkWindow._write_xlsx(win, str(Path(tmp) / "t.xlsx"), "a,b\n1,2\n", "t")
+            win._closed = True
+            self.finish(win)
+        self.assertEqual([k for k, _ in win.seen], ["notify"])      # only the "Exporting..." toast from before the close
+        self.assertFalse(win._exporting)
 
 
 class LibreOfficeTests(unittest.TestCase):

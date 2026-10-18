@@ -1,7 +1,7 @@
 # Notemark - build, install and packaging
 #
-#   make run                 launch from the source tree
-#   make test                run the editor and keyboard tests (need an X display)
+#   make run                 launch from the source tree (own app id: does not join an installed Notemark)
+#   make test                run the editor, keyboard, xlsx, session and chunked-parse tests (X display for most; node for the last)
 #   make install             install into $(DESTDIR)$(PREFIX)
 #   make deb appimage tarball
 #   make dist                build all three release artefacts
@@ -12,6 +12,8 @@ APP     := notemark
 VERSION := $(shell sed -n 's/^VERSION = "\(.*\)"/\1/p' notemark.py)
 PREFIX  ?= /usr
 DESTDIR ?=
+# make run and the tests use their own app id, so they never hand their files to an installed Notemark
+APP_ID_DEV := com.forhadkhan.Notemark.Dev
 
 BINDIR  := $(DESTDIR)$(PREFIX)/bin
 LIBDIR  := $(DESTDIR)$(PREFIX)/lib/$(APP)
@@ -27,17 +29,22 @@ version:
 	@echo $(VERSION)
 
 run:
-	@python3 notemark.py $(FILE)
+	@NOTEMARK_APP_ID=$(APP_ID_DEV) python3 notemark.py $(FILE)
 
 test:
 	@WEBKIT_DISABLE_COMPOSITING_MODE=1 python3 tests/test_editor.py
 	@python3 tests/test_keys.py
 	@python3 tests/test_xlsx.py
+	@python3 tests/test_single_instance.py
+	@python3 tests/test_external_change.py
+	@python3 tests/test_session.py
+	@python3 tests/test_sync.py
+	@if command -v node >/dev/null; then node tests/test_chunk.js; else echo "skip chunked parse test: node not installed"; fi
 
 install:
 	install -d $(LIBDIR) $(LIBDIR)/ui $(LIBDIR)/ui/vendor
 	install -m 644 notemark.py $(LIBDIR)/notemark.py
-	install -m 644 ui/index.html ui/app.css ui/app.js ui/csv.js $(LIBDIR)/ui/
+	install -m 644 ui/index.html ui/app.css ui/app.js ui/csv.js ui/mdchunk.js $(LIBDIR)/ui/
 	install -m 644 ui/vendor/*.js ui/vendor/LICENSE-* $(LIBDIR)/ui/vendor/
 	install -d $(BINDIR)
 	sed 's|@LIBDIR@|$(PREFIX)/lib/$(APP)|g' bin/notemark.in > $(BINDIR)/$(APP)

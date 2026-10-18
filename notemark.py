@@ -10,15 +10,18 @@ Every open file is a tab (``Document``) with its own view, so undo history,
 scroll position, cursor and mode are kept per file. ``.csv`` and ``.tsv`` files
 open as an editable table (``ui/csv.js``).
 """
+import collections
+import errno
+import hashlib
 import io
 import json
 import os
 import re
 import sys
+import threading
+import time
 import unicodedata
-import zipfile
 from urllib.parse import quote
-from xml.sax.saxutils import escape
 
 import gi
 
@@ -27,7 +30,12 @@ gi.require_version("Gdk", "3.0")
 gi.require_version("WebKit2", "4.1")
 from gi.repository import Gdk, Gio, GLib, Gtk, WebKit2  # noqa: E402
 
-APP_ID = "com.forhadkhan.Notemark"
+DEFAULT_APP_ID = "com.forhadkhan.Notemark"     # the desktop file, icon and dock grouping are named after this
+# One process per app id owns the windows; later launches hand it their files and exit. Dev runs and tests set
+# NOTEMARK_APP_ID so they never reach a user's real instance.
+APP_ID = os.environ.get("NOTEMARK_APP_ID") or DEFAULT_APP_ID
+if not Gio.Application.id_is_valid(APP_ID):
+    APP_ID = DEFAULT_APP_ID
 APP_NAME = "Notemark"
 VERSION = "0.2.0"
 
@@ -93,13 +101,53 @@ def kind_for(path):
     return "csv" if path and path.lower().endswith(CSV_EXTENSIONS) else "md"
 
 
-def read_text_file(path):
+# What a document last read from, or wrote to, its file: modification time, size and a hash of the bytes. The hash
+# is what proves a change (touch, chmod and identical rewrites leave it alone); None past HASH_LIMIT, where
+# time and size decide.
+DiskState = collections.namedtuple("DiskState", "mtime size digest")
+HASH_LIMIT = 64 * 1024 * 1024
+CRASH_RELOAD_GAP = 60           # seconds: a page process that dies again sooner is not restarted again
+WATCH_DEBOUNCE_MS = 250         # quiet time after the last file event before the file is looked at
+
+
+def read_text_state(path):
+    """The text of ``path`` (UTF-8, else Latin-1; any line ending becomes \\n) and its DiskState, from one read."""
+    with open(path, "rb") as fh:
+        mtime = os.fstat(fh.fileno()).st_mtime_ns
+        data = fh.read()
     try:
-        with open(path, "r", encoding="utf-8") as fh:
-            return fh.read()
+        text = data.decode("utf-8")
     except UnicodeDecodeError:
-        with open(path, "r", encoding="latin-1") as fh:
-            return fh.read()
+        text = data.decode("latin-1")
+    state = DiskState(mtime, len(data), hashlib.sha1(data).digest() if len(data) <= HASH_LIMIT else None)
+    return text.replace("\r\n", "\n").replace("\r", "\n"), state
+
+
+def read_text_file(path):
+    return read_text_state(path)[0]
+
+
+def disk_state(path):
+    """The DiskState of the file as it is now (raises OSError)."""
+    return read_text_state(path)[1]
+
+
+def verify_disk(path, known, force=False):
+    """Compare the file with ``known``: ("same", state), ("changed", state) or ("gone", None); raises OSError when
+    it exists but cannot be read. Without ``force`` an unchanged time and size is trusted, which keeps polling cheap."""
+    try:
+        st = os.stat(path)
+    except OSError as exc:
+        if exc.errno in (errno.ENOENT, errno.ENOTDIR):
+            return "gone", None
+        raise
+    same_stat = (st.st_mtime_ns, st.st_size) == (known.mtime, known.size)
+    if st.st_size > HASH_LIMIT or known.digest is None:
+        return ("same", known) if same_stat else ("changed", DiskState(st.st_mtime_ns, st.st_size, None))
+    if same_stat and not force:
+        return "same", known
+    state = disk_state(path)
+    return ("same" if state.digest == known.digest else "changed"), state
 
 
 def load_session():
@@ -145,10 +193,23 @@ def system_prefers_dark():
 # --------------------------------------------------------------------------- #
 # One open file
 # --------------------------------------------------------------------------- #
+# Reload: Notemark.load puts the scroll and the caret back at the top, so note them first and restore them after.
+RELOAD_JS = """(function (text, opts) {
+  var N = window.Notemark; if (!N) return;
+  var ed = document.getElementById("editor"), pane = document.getElementById("page-pane");
+  var edTop = ed.scrollTop, paneTop = pane.scrollTop, a = ed.selectionStart, b = ed.selectionEnd;
+  N.load(text, opts);
+  var n = ed.value.length;
+  if (N.getMode() !== "page") ed.setSelectionRange(Math.min(a, n), Math.min(b, n));
+  function put() { ed.scrollTop = edTop; pane.scrollTop = paneTop; }
+  put(); requestAnimationFrame(put);
+})(%s, %s);"""
+
+
 class Document:
     """A tab: one file (or an unsaved note) with its own WebKit view."""
 
-    def __init__(self, window, path=None, text=None, kind=None):
+    def __init__(self, window, path=None, text=None, kind=None, disk=None):
         self.window = window
         self.path = os.path.abspath(path) if path else None
         self.kind = kind or kind_for(self.path)
@@ -161,9 +222,27 @@ class Document:
         self.view = None
         self.ready = False
         self.pending_action = None
+        self._crashed = -CRASH_RELOAD_GAP   # when the page process last died and was reloaded (time.monotonic)
         self.box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)   # the notebook page
         self.label = None
         self.tab = None
+        self.disk = disk            # DiskState of the file as last read or written; None until it has been read
+        self.monitor = None         # Gio.FileMonitor on ``path``
+        self.bar = None             # Gtk.InfoBar at the top of ``box``: the file changed or vanished
+        self._bar_key = None        # (kind, dirty) the bar was built for
+        self._dismissed = None      # what the user waved away, so a focus check does not raise it again
+        self._seen = None           # what the last check found: ("changed", digest) or ("gone",)
+        self._timer = 0             # pending debounce of file events
+        self._stale = False         # an event said the file was replaced: watch it again
+        self._unreadable = False
+        self._disposed = False
+        if self.path and text is not None:
+            if self.disk is None:
+                try:
+                    self.disk = disk_state(self.path)
+                except OSError:
+                    pass
+            self.watch()
 
     # ----- naming -------------------------------------------------------- #
     @property
@@ -179,10 +258,12 @@ class Document:
             return
         if self.text is None:
             try:
-                self.text = read_text_file(self.path) if self.path else ""
+                self.text, self.disk = read_text_state(self.path) if self.path else ("", None)
             except OSError as exc:
                 self.window.error("Could not open file", str(exc))
                 self.text = ""
+        if self.path and self.monitor is None:
+            self.watch()
         ucm = WebKit2.UserContentManager()
         ucm.register_script_message_handler("app")
         ucm.connect("script-message-received::app", self._on_script_message)
@@ -199,8 +280,12 @@ class Document:
         self.view.connect("decide-policy", self._on_decide_policy)
         self.view.connect("context-menu", lambda *a: not debug)
         self.window.paint_background(self.view)
+        # Stay hidden until the page has loaded: drawing a view whose web process is not ready
+        # blocks the main thread for about half a second, twice. show_all() must not reveal it.
+        self.view.set_no_show_all(True)
         self.box.pack_start(self.view, True, True, 0)
-        self.view.show()
+        self.view.connect("load-failed", self._on_load_failed)
+        self.view.connect("web-process-terminated", self._on_process_terminated)
         self.view.load_uri(GLib.filename_to_uri(UI_INDEX, None))
 
     def run_js(self, script):
@@ -211,9 +296,45 @@ class Document:
         payload = ", ".join(json.dumps(a) for a in args)
         self.run_js("window.Notemark && Notemark.%s(%s);" % (func, payload))
 
+    def _reveal(self):
+        self.view.set_no_show_all(False)
+        self.view.show()
+        if self.window.current is self:
+            self.view.grab_focus()
+
+    def _on_load_failed(self, view, event, uri, error):
+        self._reveal()
+        return False
+
+    def _on_process_terminated(self, view, reason):
+        """The page process died: say so instead of leaving a blank tab, and bring the page back, once a minute at most."""
+        self._reveal()
+        self.pending_action = None          # an answer from the dead page will never come
+        if self.ready:                      # it had the document: only the file on disk (or nothing) is left
+            self.ready = False
+            self.text, self.saved_text = "", None
+            if self.path:
+                try:
+                    self.text, self.disk = read_text_state(self.path)
+                except OSError:
+                    pass
+            self.dirty = False
+            self.window.document_changed(self)
+            note = "The page process crashed; unsaved edits in this tab may be lost"
+        else:                               # it died while loading: the text is still waiting
+            note = "The page process crashed while loading; trying again"
+        now = time.monotonic()
+        if now - self._crashed < CRASH_RELOAD_GAP:
+            self.window.notify("The page process crashed again. Close this tab and open the file again.", 8000)
+            return
+        self._crashed = now
+        self.window.notify(note, 8000)
+        view.reload()
+
     def _on_load_changed(self, view, event):
         if event != WebKit2.LoadEvent.FINISHED:
             return
+        self._reveal()
         self.ready = True
         s = self.window.settings
         self.call_js("init", {
@@ -236,6 +357,8 @@ class Document:
         return False
 
     def _on_script_message(self, ucm, result):
+        if self._disposed:              # a report that was on its way when the tab or window closed
+            return
         try:
             msg = json.loads(result.get_js_value().to_string())
         except Exception:
@@ -244,8 +367,13 @@ class Document:
         if kind == "changed":
             changed = bool(msg.get("dirty")) != self.dirty
             self.dirty = bool(msg.get("dirty"))
-            self.words, self.chars = msg.get("words", 0), msg.get("chars", 0)
+            if "words" in msg:                  # the first keystroke reports the dirty flag alone
+                self.words, self.chars = msg.get("words", 0), msg.get("chars", 0)
+            if "line" in msg:
+                self.cursor = "Ln %s, Col %s" % (msg["line"], msg.get("col", 1))
             self.window.document_changed(self, retitle=changed)
+            if changed and self.bar is not None:
+                self.set_bar(self._bar_key[0])          # the wording depends on unsaved changes
         elif kind == "link":
             href = msg.get("href", "")
             if href.startswith(("http://", "https://", "mailto:")):
@@ -278,6 +406,157 @@ class Document:
             return
         self.pending_action = callback
         self.call_js("sendContent")
+
+    # ----- the file changing underneath us ------------------------------- #
+    def watch(self):
+        """(Re)start the file monitor on ``path``. Replacing a file (write a temp file, rename it over) leaves a
+        monitor on the old inode quiet, so this also runs after such events."""
+        self._cancel_monitor()
+        if self._disposed or not self.path:
+            return
+        try:
+            mon = Gio.File.new_for_path(self.path).monitor_file(Gio.FileMonitorFlags.WATCH_MOVES, None)
+        except GLib.Error:
+            return              # not supported here (some network mounts): focus and tab checks still run
+        mon.connect("changed", self._on_file_event)
+        self.monitor = mon
+
+    def _cancel_monitor(self):
+        mon, self.monitor = self.monitor, None
+        if mon is not None:
+            mon.cancel()
+
+    def dispose(self):
+        """The tab is closing: nothing may call back into it any more."""
+        self._disposed = True
+        self._cancel_monitor()
+        if self._timer:
+            GLib.source_remove(self._timer)
+            self._timer = 0
+
+    def _on_file_event(self, monitor, file, other, event):
+        if event in (Gio.FileMonitorEvent.RENAMED, Gio.FileMonitorEvent.CREATED, Gio.FileMonitorEvent.MOVED_IN,
+                     Gio.FileMonitorEvent.MOVED_OUT, Gio.FileMonitorEvent.DELETED):
+            self._stale = True
+        if self._timer:
+            GLib.source_remove(self._timer)
+        self._timer = GLib.timeout_add(WATCH_DEBOUNCE_MS, self._events_settled)
+
+    def _events_settled(self):
+        self._timer = 0
+        if self._stale:
+            self._stale = False
+            self.watch()                # the new monitor first, then look: nothing slips between the two
+        self.check_disk(force=True)
+        return False
+
+    def check_disk(self, force=False):
+        """Compare the file with what this tab last read or wrote, and show or drop the notice to match.
+        Without ``force`` an unchanged time and size is trusted (focus and tab switches)."""
+        if self._disposed or not self.path or self.disk is None:
+            return
+        try:
+            verdict, state = verify_disk(self.path, self.disk, force)
+        except OSError as exc:
+            if not self._unreadable:
+                self._unreadable = True
+                self.window.notify("Cannot read %s: %s" % (self.name, exc.strerror or exc), 4000)
+            return
+        self._unreadable = False
+        if verdict == "same":
+            self.disk = state           # a touch moves the time only
+            self._dismissed = self._seen = None
+            self.set_bar(None)
+            return
+        self._seen = ("gone",) if verdict == "gone" else ("changed", state.digest or state[:2])
+        if self._seen == self._dismissed:
+            return
+        self._dismissed = None
+        self.set_bar(verdict)
+
+    def disk_written(self):
+        """We just wrote ``path``: that is the new baseline, and any notice about the old file is moot."""
+        try:
+            self.disk = disk_state(self.path)
+        except OSError:
+            self.disk = None
+        self._dismissed = self._seen = None
+        self._unreadable = False
+        self.set_bar(None)
+        self.watch()
+
+    def set_bar(self, kind):
+        """Show the notice for ``kind`` ("changed" or "gone"), or none for None. Rebuilt only when it differs."""
+        key = (kind, self.dirty and kind == "changed") if kind else None
+        if key == self._bar_key:
+            return
+        if self.bar is not None:
+            self.bar.destroy()
+            self.bar = None
+        self._bar_key = key
+        if not kind:
+            return
+        bar = Gtk.InfoBar()
+        bar.set_message_type(Gtk.MessageType.WARNING)
+        bar.set_show_close_button(True)
+        if kind == "gone":
+            text = "%s was deleted or moved on disk." % self.name
+            bar.add_button("Save As…", Gtk.ResponseType.APPLY)
+        else:
+            text = "%s has changed on disk." % self.name
+            if self.dirty:
+                text = "%s has changed on disk, and you have unsaved changes. Reloading will discard them." % self.name
+            btn = bar.add_button("Reload", Gtk.ResponseType.ACCEPT)
+            btn.get_style_context().add_class("destructive-action" if self.dirty else "suggested-action")
+        label = Gtk.Label(label=text)
+        label.set_xalign(0.0)
+        label.set_line_wrap(True)
+        bar.get_content_area().add(label)
+        bar.connect("response", self._on_bar_response)
+        self.box.pack_start(bar, False, False, 0)
+        self.box.reorder_child(bar, 0)          # above the view, which may be packed later or earlier
+        bar.show_all()
+        self.bar = bar
+
+    @property
+    def bar_kind(self):
+        return self._bar_key[0] if self._bar_key else None
+
+    @property
+    def bar_text(self):
+        if self.bar is None:
+            return None
+        return self.bar.get_content_area().get_children()[0].get_text()
+
+    def _on_bar_response(self, bar, response):
+        if response == Gtk.ResponseType.ACCEPT:
+            self.window.reload_doc(self)
+        elif response == Gtk.ResponseType.APPLY:
+            self.window.save_as(self)
+        else:
+            self._dismissed = self._seen
+            self.set_bar(None)
+
+    def reload(self):
+        """Replace the tab's content with the file as it is now. Unsaved edits go; mode, scroll and (in source
+        mode) the caret stay where they were."""
+        if self._disposed or not self.path:
+            return
+        try:
+            text, state = read_text_state(self.path)
+        except OSError as exc:
+            self.window.notify("Could not reload %s: %s" % (self.name, exc.strerror or exc), 4000)
+            return
+        self.disk = state
+        self._dismissed = self._seen = None
+        self._unreadable = False
+        self.set_bar(None)
+        if self.ready:
+            self.run_js(RELOAD_JS % (json.dumps(text), json.dumps({"kind": self.kind})))
+        else:                                   # no view yet, or it is still loading: it will take this text
+            self.text, self.saved_text = text, None
+        self.dirty = False
+        self.window.document_changed(self)
 
 
 # --------------------------------------------------------------------------- #
@@ -387,6 +666,8 @@ def _sheet_name(title):
 
 def build_xlsx(text, title="Sheet1"):
     """Return (xlsx bytes, notes) for CSV text. notes counts what had to change to fit the format."""
+    import zipfile                              # only needed for an export, so not paid for at startup
+    from xml.sax.saxutils import escape
     rows = parse_csv(text) or [[""]]
     if len(rows) > XLSX_MAX_ROWS:
         raise ExportError("The table has {:,} rows. An Excel sheet holds {:,}.".format(len(rows), XLSX_MAX_ROWS))
@@ -465,6 +746,32 @@ def build_xlsx(text, title="Sheet1"):
     return buf.getvalue(), notes
 
 
+def write_xlsx_file(path, text, title):
+    """Build the workbook and write it to path; returns the notes. Safe to call off the main thread."""
+    data, notes = build_xlsx(text, title)
+    with open(path, "wb") as fh:
+        fh.write(data)
+    return notes
+
+
+def run_in_thread(work, done, *args):
+    """Run work() on a worker thread, then done(*args, result, exc) on the GTK main loop.
+    exc is None on success, else the exception work raised. Not a daemon thread: closing the
+    last window must not cut a file half written."""
+    def target():
+        result = exc = None
+        try:
+            result = work()
+        except Exception as e:                  # delivered to done(), which decides what to show
+            exc = e
+
+        def deliver():
+            done(*args, result, exc)
+            return False                        # run once
+        GLib.idle_add(deliver)
+    threading.Thread(target=target, name="notemark-worker").start()
+
+
 # --------------------------------------------------------------------------- #
 # Main window
 # --------------------------------------------------------------------------- #
@@ -479,8 +786,11 @@ class NotemarkWindow(Gtk.ApplicationWindow):
         self.settings = settings
         self.docs = []
         self._active = None         # set before GTK's switch-page signal reports the new page
+        self.restoring = False      # while True, adding pages does not create their views
         self._toast_id = 0
         self._owner = None          # invisible widget that owns the clipboard for "Copy File"
+        self._exporting = False     # an Excel export is running on its worker thread
+        self._closed = False
 
         self.set_default_size(1080, 760)
         self.set_icon_name("notemark")
@@ -488,7 +798,8 @@ class NotemarkWindow(Gtk.ApplicationWindow):
         self._build_header()
         self._build_body()
         self.connect("delete-event", self._on_delete)
-        self.connect("destroy", lambda *_: app.window_closed(self))
+        self.connect("destroy", lambda *_: self._on_destroy(app))
+        self.connect("notify::is-active", self._on_active)
 
         self.apply_theme(self.settings["theme"])
         self.apply_zoom(self.settings["zoom"])
@@ -556,6 +867,7 @@ class NotemarkWindow(Gtk.ApplicationWindow):
         menu.append_section(None, copy_section)
         save_section = Gio.Menu()
         save_section.append("Save As…", "app.save-as")
+        save_section.append("Reload from Disk", "app.reload")
         save_section.append("Export HTML…", "app.export-html")
         save_section.append("Export Excel…", "app.export-excel")
         menu.append_section(None, save_section)
@@ -709,8 +1021,8 @@ class NotemarkWindow(Gtk.ApplicationWindow):
         menu.show_all()
         return menu
 
-    def new_tab(self, path=None, text=None, kind=None, activate=True):
-        doc = Document(self, path=path, text=text, kind=kind)
+    def new_tab(self, path=None, text=None, kind=None, activate=True, disk=None):
+        doc = Document(self, path=path, text=text, kind=kind, disk=disk)
         self.docs.append(doc)
         self.notebook.append_page(doc.box, self._make_tab_label(doc))
         self.notebook.set_tab_reorderable(doc.box, True)
@@ -719,16 +1031,20 @@ class NotemarkWindow(Gtk.ApplicationWindow):
         if activate:
             self.notebook.set_current_page(len(self.docs) - 1)
             self._activate(doc)
-        self.app.session_changed()
+        if not self.restoring:      # the restore saves the whole session once, when every window is back
+            self.app.session_changed()
         return doc
 
     def _activate(self, doc):
         self._active = doc
         doc.ensure_view()
+        doc.check_disk()                # it may have changed while the tab was in the background
         self._set_mode_buttons(doc.mode)
         self._refresh_chrome()
 
     def _on_switch_page(self, nb, page, index):
+        if self.restoring:
+            return
         if 0 <= index < len(self.docs):
             self._activate(self.docs[index])
             self.app.session_changed()
@@ -766,6 +1082,7 @@ class NotemarkWindow(Gtk.ApplicationWindow):
             return
         index = self.docs.index(doc)
         self.docs.remove(doc)
+        doc.dispose()
         self.notebook.remove_page(index)
         doc.box.destroy()
         if not self.docs:
@@ -894,7 +1211,9 @@ class NotemarkWindow(Gtk.ApplicationWindow):
 
     def apply_theme(self, theme):
         dark = theme == "dark"
-        Gtk.Settings.get_default().props.gtk_application_prefer_dark_theme = dark
+        gtk_settings = Gtk.Settings.get_default()
+        if gtk_settings.props.gtk_application_prefer_dark_theme != dark:   # a set always reloads the theme
+            gtk_settings.props.gtk_application_prefer_dark_theme = dark
         self.theme_btn.set_image(Gtk.Image.new_from_icon_name(
             "weather-clear-symbolic" if dark else "weather-clear-night-symbolic",
             Gtk.IconSize.BUTTON))
@@ -964,7 +1283,7 @@ class NotemarkWindow(Gtk.ApplicationWindow):
             self.select_doc(existing)
             return existing
         try:
-            text = read_text_file(path)
+            text, state = read_text_state(path)
         except OSError as exc:
             self.error("Could not open file", str(exc))
             return None
@@ -973,6 +1292,8 @@ class NotemarkWindow(Gtk.ApplicationWindow):
             # The window still holds its untouched blank tab: open into it.
             cur.path = os.path.abspath(path)
             cur.kind = kind_for(cur.path)
+            cur.disk = state
+            cur.watch()
             if cur.ready:
                 cur.call_js("load", text, {"kind": cur.kind})
             else:
@@ -981,7 +1302,7 @@ class NotemarkWindow(Gtk.ApplicationWindow):
             self._refresh_chrome()
             self.app.session_changed()
             return cur
-        return self.new_tab(path=path, text=text)
+        return self.new_tab(path=path, text=text, disk=state)
 
     def save(self, doc=None, then=None, path=None):
         doc = doc or self.current
@@ -1001,12 +1322,13 @@ class NotemarkWindow(Gtk.ApplicationWindow):
                 return
             doc.path = os.path.abspath(target)
             doc.dirty = False
+            doc.disk_written()          # our own write is not an outside change
             new_kind = kind_for(doc.path)
             if new_kind != doc.kind:
                 doc.kind = new_kind
                 doc.call_js("load", text, {"kind": new_kind})
             else:
-                doc.call_js("markClean")
+                doc.call_js("markClean", text)      # what was written: keys typed since the page sent it stay unsaved
             self._refresh_tab(doc)
             self._refresh_chrome()
             self.app.session_changed()
@@ -1033,6 +1355,32 @@ class NotemarkWindow(Gtk.ApplicationWindow):
             self.save(doc, then, path=path)
         else:
             dlg.destroy()
+
+    def reload_current(self):
+        """Menu: read the file again; unsaved edits are only dropped after a yes."""
+        doc = self.current
+        if doc is None:
+            return
+        if not doc.path:
+            self.notify("Not saved yet: nothing to reload")
+            return
+        self.reload_doc(doc)
+
+    def reload_doc(self, doc):
+        """Read the file again; unsaved edits are only dropped after a yes."""
+        if not doc.dirty:
+            doc.reload()
+            return
+        dlg = Gtk.MessageDialog(transient_for=self, modal=True, message_type=Gtk.MessageType.QUESTION,
+                                text="Reload “%s” from disk?" % doc.name)
+        dlg.format_secondary_text("Your unsaved changes will be lost.")
+        dlg.add_button("Cancel", Gtk.ResponseType.CANCEL)
+        dlg.add_button("Reload", Gtk.ResponseType.ACCEPT)
+        dlg.get_widget_for_response(Gtk.ResponseType.ACCEPT).get_style_context().add_class("destructive-action")
+        resp = dlg.run()
+        dlg.destroy()
+        if resp == Gtk.ResponseType.ACCEPT:
+            doc.reload()
 
     def export_html(self):
         doc = self.current
@@ -1086,17 +1434,24 @@ class NotemarkWindow(Gtk.ApplicationWindow):
         doc.request_content(lambda text: self._write_xlsx(path, text, base))
 
     def _write_xlsx(self, path, text, title):
-        try:
-            data, notes = build_xlsx(text, title)
-        except ExportError as exc:
+        # Building a big sheet takes seconds, so it runs on a worker thread and the window stays live.
+        if self._exporting:
+            self.notify("An Excel export is already running")
+            return
+        self._exporting = True
+        self.notify("Exporting " + os.path.basename(path) + "...", 60000)
+        run_in_thread(lambda: write_xlsx_file(path, text, title), self._xlsx_done, path)
+
+    def _xlsx_done(self, path, notes, exc):
+        self._exporting = False
+        if self._closed:
+            return
+        if isinstance(exc, (ExportError, OSError)):
+            self.toast.set_reveal_child(False)
             self.error("Could not export", str(exc))
             return
-        try:
-            with open(path, "wb") as fh:
-                fh.write(data)
-        except OSError as exc:
-            self.error("Could not export", str(exc))
-            return
+        if exc is not None:
+            raise exc
         done = "Exported " + os.path.basename(path)
         if notes["cut"]:
             done += ". {} cell{} cut to Excel's {:,}-character limit".format(
@@ -1197,14 +1552,34 @@ class NotemarkWindow(Gtk.ApplicationWindow):
         dlg.run()
         dlg.destroy()
 
+    def _on_active(self, *args):
+        """Back in front: files on mounts that send no change events are caught here."""
+        if self.is_active():
+            for doc in self.docs:
+                doc.check_disk()
+
+    def _on_destroy(self, app):
+        self._closed = True
+        for doc in self.docs:
+            doc.dispose()
+        app.window_closed(self)
+
+    def under_modal(self):
+        """Whether a dialog is open over this window, so that nothing added to it can be seen or kept."""
+        return any(w is not self and w.get_modal() and w.get_visible() and w.get_transient_for() is self
+                   for w in Gtk.Window.list_toplevels())
+
     def _on_delete(self, *args):
         """Ask about every unsaved tab, one by one, before the window goes."""
         dirty = [d for d in self.docs if d.dirty]
         if not dirty:
             return False
+        before = list(self.docs)
 
         def step(rest):
             if not rest:
+                if any(d not in before for d in self.docs):
+                    return              # a file was opened into this window while we asked: closing would take it along
                 for d in self.docs:
                     d.dirty = False
                 self.destroy()
@@ -1333,8 +1708,7 @@ class NotemarkWindow(Gtk.ApplicationWindow):
 # --------------------------------------------------------------------------- #
 class NotemarkApp(Gtk.Application):
     def __init__(self):
-        super().__init__(application_id=APP_ID,
-                         flags=Gio.ApplicationFlags.HANDLES_OPEN | Gio.ApplicationFlags.NON_UNIQUE)
+        super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.HANDLES_OPEN)
         self.settings = None
         self.quitting = False
 
@@ -1351,6 +1725,11 @@ class NotemarkApp(Gtk.Application):
         win.show_all()
         win.apply_status_visibility()
         return win
+
+    def _new_blank_window(self):
+        win = self.new_window()
+        win.new_tab()
+        win.present()
 
     def for_all(self, fn):
         for win in self.get_windows():
@@ -1420,11 +1799,12 @@ class NotemarkApp(Gtk.Application):
         actions = {
             "new": (lambda: self.active().new_document(), ["<Primary>n", "<Primary>t"]),
             "new-csv": (lambda: self.active().new_document("csv"), []),
-            "new-window": (lambda: self.new_window().present(), ["<Primary><Shift>n"]),
+            "new-window": (self._new_blank_window, ["<Primary><Shift>n"]),
             "open": (lambda: self.active().open_dialog(), ["<Primary>o"]),
             "open-new-window": (lambda: self.active().open_dialog(new_window=True), []),
             "save": (lambda: self.active().save(), ["<Primary>s"]),
             "save-as": (lambda: self.active().save_as(), ["<Primary><Shift>s"]),
+            "reload": (lambda: self.active().reload_current(), []),
             "export-html": (lambda: self.active().export_html(), []),
             "export-excel": (lambda: self.active().export_excel(), []),
             "close-tab": (lambda: self.active().close_current(), ["<Primary>w"]),
@@ -1476,14 +1856,23 @@ class NotemarkApp(Gtk.Application):
         if self.settings["restore_session"]:
             for state in load_session():
                 win = self.new_window()
-                for i, path in enumerate(state["files"]):
-                    win.new_tab(path=path, activate=False)
-                win.notebook.set_current_page(min(state["active"], len(win.docs) - 1))
+                # GTK switches to the first page it gets; only the saved active tab gets a view.
+                win.restoring = True
+                try:
+                    for path in state["files"]:
+                        win.new_tab(path=path, activate=False)
+                    win.notebook.set_current_page(min(state["active"], len(win.docs) - 1))
+                finally:
+                    win.restoring = False
                 win._activate(win.docs[win.notebook.get_current_page()])
                 win.present()
                 restored = True
+        if restored:
+            self.session_changed()      # switch-page was ignored above: write which tab each window is on
         return restored
 
+    # do_activate and do_open run in the primary process only: a second launch forwards its request over D-Bus
+    # (with the startup-notification / activation token, so present() is allowed to raise the window) and exits.
     def do_activate(self):
         if self.get_windows():
             self.active().present()
@@ -1493,10 +1882,14 @@ class NotemarkApp(Gtk.Application):
             self.active().present()
 
     def do_open(self, files, n_files, hint):
-        win = self.get_windows()[-1] if self.get_windows() else self.new_window()
+        win = self.active()         # the focused window, else the newest; open_path reuses a tab already on the file
+        if win.under_modal():       # a prompt (say, about unsaved tabs of a window being closed) hides tabs added behind it
+            win = self.new_window()
         for f in files:
             if f.get_path():
                 win.open_path(f.get_path())
+        if not win.docs:            # only non-local URIs were given
+            win.new_tab()
         win.present()
 
 

@@ -5,45 +5,256 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Notemark APT repository</title>
 <meta name="description" content="Signed APT repository for Notemark, a Notion-style Markdown editor for Linux.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#fcfbfa" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0d0e" media="(prefers-color-scheme: dark)">
 <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
+<script>try{var t=localStorage.getItem('notemark-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 <style>
-:root { color-scheme: light dark; --bg: #fcfbfa; --fg: #1d1c1a; --muted: #5f5b57; --line: #e7e3df; --code: #f4f2ef; --accent: #b3411a; }
-@media (prefers-color-scheme: dark) { :root { --bg: #0d0d0e; --fg: #efeeec; --muted: #a4a09b; --line: #2a2a2d; --code: #1c1c1f; --accent: #f47a46; } }
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
-main { max-width: 680px; margin: 0 auto; padding: 56px 16px 72px; }
-h1 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 8px; letter-spacing: -.02em; }
-h2 { font-size: 1.1rem; margin: 36px 0 8px; }
-p { margin: 0 0 12px; }
-.muted { color: var(--muted); }
-a { color: var(--accent); }
-pre { margin: 0 0 12px; padding: 14px 16px; background: var(--code); border: 1px solid var(--line); border-radius: 10px; overflow-x: auto; font: 13.5px/1.55 ui-monospace, "SF Mono", Menlo, monospace; }
-ul { padding-left: 20px; margin: 0; }
-li { margin: 4px 0; }
-code { font: 0.92em ui-monospace, "SF Mono", Menlo, monospace; background: var(--code); padding: 1px 5px; border-radius: 4px; }
+/* Same tokens as the product page. Self-contained: no third-party requests. */
+:root {
+  color-scheme: light dark;
+  --bg: light-dark(#fcfbfa, #0d0d0e);
+  --surface: light-dark(#f5f2ee, #161618);
+  --raise: light-dark(#ffffff, #2b2b31);
+  --sub: light-dark(#ece8e3, #202024);
+  --fg: light-dark(#1d1c1a, #efeeec);
+  --muted: light-dark(#5f5b57, #a4a09b);
+  --line: light-dark(#e7e3df, #2a2a2d);
+  --accent: #d9531e;
+  --accent-strong: #c24716;
+  --accent-text: light-dark(#b3411a, #f47a46);
+  --accent-soft: light-dark(#fdeee6, #2b1810);
+  --thumb: light-dark(rgb(60 50 40 / .34), rgb(255 255 255 / .3));
+  --code-bg: light-dark(#17171b, #060607);
+  --code-bar: light-dark(#202027, #151519);
+  --code-fg: #ebe9e6;
+  --code-dim: #9b99a3;
+  --tk-cmd: #ffa66d;
+  --tk-flag: #7fd0e8;
+  --tk-str: #a6d98b;
+  --tk-url: #8fb4ff;
+  --tk-op: #c4a7ff;
+  --sh1: light-dark(rgb(30 20 10 / .08), rgb(0 0 0 / .45));
+  --sh2: light-dark(rgb(30 20 10 / .22), rgb(0 0 0 / .7));
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", "DejaVu Sans Mono", "Ubuntu Mono", Menlo, Consolas, monospace;
+  --r: 14px;
+  --wrap: 1120px;
+  --ease: cubic-bezier(.22, .8, .24, 1);
+}
+[data-theme="light"] { color-scheme: light; }
+[data-theme="dark"] { color-scheme: dark; }
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 1.0625rem/1.7 var(--font); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+a { color: var(--accent-text); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; border-radius: 6px; }
+p { margin: 0 0 1em; text-wrap: pretty; }
+h1, h2 { margin: 0; line-height: 1.1; text-wrap: balance; }
+code { font-family: var(--mono); font-size: .88em; font-variant-ligatures: none; background: var(--sub); padding: .1em .38em; border-radius: 6px; }
+.ico { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+html, pre { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+pre:hover, pre:focus-visible, html.is-scrolling, html.edge { scrollbar-color: var(--thumb) transparent; }
+@supports not (scrollbar-color: auto) {
+  html::-webkit-scrollbar, pre::-webkit-scrollbar { width: 8px; height: 8px; }
+  html::-webkit-scrollbar-thumb, pre::-webkit-scrollbar-thumb { background: transparent; border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+  html.is-scrolling::-webkit-scrollbar-thumb, html.edge::-webkit-scrollbar-thumb, pre:hover::-webkit-scrollbar-thumb { background-color: var(--thumb); }
+}
+
+.bar { background: color-mix(in srgb, var(--bg) 82%, transparent); }
+.bar-in { display: flex; align-items: center; gap: 12px; max-width: 760px; height: 56px; margin: 0 auto; padding: 0 20px; }
+.brand { display: inline-flex; align-items: center; gap: 10px; margin-right: auto; font-weight: 700; letter-spacing: -.01em; color: var(--fg); text-decoration: none; }
+.brand img { display: block; }
+.back { font-size: .92rem; color: var(--muted); text-decoration: none; }
+.back:hover { color: var(--fg); }
+.icon-btn { position: relative; display: inline-grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 10px; background: none; color: var(--muted); cursor: pointer; transition: color .2s, background-color .2s, transform .2s var(--ease); }
+.icon-btn:hover { color: var(--fg); background: var(--sub); }
+.icon-btn:active { transform: scale(.92); }
+.icon-btn .ico { grid-area: 1 / 1; transition: transform .45s var(--ease), opacity .3s; }
+.ico-sun { opacity: 0; transform: rotate(-90deg) scale(.5); }
+[data-theme="dark"] .ico-sun { opacity: 1; transform: none; }
+[data-theme="dark"] .ico-moon { opacity: 0; transform: rotate(90deg) scale(.5); }
+
+main { position: relative; isolation: isolate; max-width: 760px; margin: 0 auto; padding: clamp(40px, 8vw, 72px) 20px 72px; }
+main::before { content: ""; position: absolute; z-index: -1; left: 50%; top: -120px; width: min(720px, 130vw); aspect-ratio: 1; margin-left: calc(min(720px, 130vw) / -2); background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 16%, transparent), transparent); opacity: .6; pointer-events: none; }
+.pill { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 20px; padding: 5px 14px; border-radius: 999px; background: var(--surface); color: var(--muted); font-size: .85rem; }
+.pill .ico { width: 15px; height: 15px; color: var(--accent-text); }
+h1 { font-size: clamp(2.1rem, 6vw, 3.2rem); font-weight: 750; letter-spacing: -.04em; margin-bottom: 18px; }
+h1 em { font-style: normal; color: var(--accent-text); }
+.lede { max-width: 56ch; margin-bottom: 8px; font-size: clamp(1.05rem, 2.2vw, 1.2rem); color: var(--muted); }
+h2 { display: flex; align-items: center; gap: 12px; margin: 48px 0 14px; font-size: 1.35rem; font-weight: 700; letter-spacing: -.02em; }
+.n { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; background: var(--accent-soft); color: var(--accent-text); font-size: .85rem; font-weight: 700; }
+h2 .ico { color: var(--accent-text); }
+.note { color: var(--muted); font-size: .95rem; }
+
+.code { margin: 0 0 16px; overflow: hidden; border-radius: 12px; background: var(--code-bg); color: var(--code-fg); box-shadow: 0 14px 30px -22px var(--sh2); }
+.code-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 6px 6px 14px; background: var(--code-bar); }
+.code-lang { display: inline-flex; align-items: center; gap: 8px; font-size: .78rem; font-weight: 600; letter-spacing: .04em; color: var(--code-dim); }
+.code-lang .ico { width: 15px; height: 15px; }
+.code pre { margin: 0; padding: 16px 18px; overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y; tab-size: 2; font-family: var(--mono); font-size: .875rem; line-height: 1.75; white-space: pre;
+  background:
+    linear-gradient(to right, var(--code-bg) 30%, transparent) left / 28px 100% no-repeat local,
+    linear-gradient(to left, var(--code-bg) 30%, transparent) right / 28px 100% no-repeat local,
+    linear-gradient(to right, rgb(255 255 255 / .1), transparent) left / 14px 100% no-repeat scroll,
+    linear-gradient(to left, rgb(255 255 255 / .1), transparent) right / 14px 100% no-repeat scroll; }
+.code code { padding: 0; border: 0; background: none; color: inherit; font-size: inherit; white-space: pre; }
+.code ::selection { background: rgb(255 166 109 / .3); }
+.tk-c { color: var(--code-dim); font-style: italic; }
+.tk-k { color: var(--tk-cmd); }
+.tk-f { color: var(--tk-flag); }
+.tk-s { color: var(--tk-str); }
+.tk-u { color: var(--tk-url); }
+.tk-o { color: var(--tk-op); }
+.copy { display: inline-flex; align-items: center; justify-content: center; gap: 7px; flex: none; width: 92px; height: 32px; padding: 0; border: 0; border-radius: 8px; background: rgb(255 255 255 / .06); color: var(--code-fg); font: 600 .8rem/1 var(--font); cursor: pointer; transition: background-color .2s, color .2s, transform .2s var(--ease); }
+.copy:hover { background: rgb(255 255 255 / .13); }
+.copy:active { transform: scale(.96); }
+.copy:focus-visible { outline: 2px solid var(--tk-cmd); outline-offset: 2px; }
+.copy-ic { display: inline-grid; }
+.copy .ico { grid-area: 1 / 1; width: 15px; height: 15px; transition: transform .3s var(--ease), opacity .2s; }
+.copy .ico-check { opacity: 0; transform: scale(.4); }
+.copy.is-copied { color: var(--tk-str); }
+.copy.is-copied .ico-copy { opacity: 0; transform: scale(.4); }
+.copy.is-copied .ico-check { opacity: 1; transform: none; }
+
+.files { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; list-style: none; margin: 0; padding: 0; }
+.file { display: flex; align-items: center; gap: 14px; height: 100%; padding: 16px; border-radius: 14px; background: var(--surface); color: var(--fg); text-decoration: none; transition: transform .3s var(--ease), box-shadow .3s; }
+.file:hover { transform: translateY(-3px); background: color-mix(in srgb, var(--accent) 7%, var(--surface)); box-shadow: 0 16px 32px -22px var(--sh2); text-decoration: none; }
+.ci { display: grid; place-items: center; flex: none; width: 42px; height: 42px; border-radius: 12px; background: var(--accent-soft); color: var(--accent-text); transition: background-color .3s, color .3s, transform .4s var(--ease); }
+.ci .ico { width: 20px; height: 20px; }
+.file:hover .ci { background: var(--accent-strong); color: #fff; transform: rotate(-6deg) scale(1.06); }
+.ft { display: grid; min-width: 0; line-height: 1.35; }
+.ft span { color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
+.go { margin-left: auto; width: 16px; height: 16px; color: var(--muted); transition: transform .25s var(--ease), color .2s; }
+.file:hover .go { color: var(--accent-text); transform: translateX(3px); }
+footer { margin-top: 56px; padding: 20px 20px; border-radius: 12px; background: var(--sub); color: var(--muted); font-size: .9rem; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .rise { animation: rise .7s var(--ease) backwards; }
+  @keyframes rise { from { opacity: 0; transform: translateY(12px); } }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; } }
+@media (max-width: 600px) {
+  .files { grid-template-columns: 1fr; }
+  .code pre { padding: 14px 16px; font-size: .84rem; }
+  .back { display: none; }
+}
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></symbol><symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" /></symbol><symbol id="i-terminal" viewBox="0 0 24 24"><path d="M12 19h8" /><path d="m4 17 6-6-6-6" /></symbol><symbol id="i-key-round" viewBox="0 0 24 24"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z" /><circle cx="16.5" cy="7.5" r=".5" fill="currentColor" /></symbol><symbol id="i-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /><path d="m9 12 2 2 4-4" /></symbol><symbol id="i-package" viewBox="0 0 24 24"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z" /><path d="M12 22V12" /><polyline points="3.29 7 12 12 20.71 7" /><path d="m7.5 4.27 9 5.15" /></symbol><symbol id="i-external-link" viewBox="0 0 24 24"><path d="M15 3h6v6" /><path d="M10 14 21 3" /><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></symbol><symbol id="i-trash-2" viewBox="0 0 24 24"><path d="M10 11v6" /><path d="M14 11v6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></symbol><symbol id="i-refresh-cw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M8 16H3v5" /></symbol><symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></symbol></defs></svg>
+<header class="bar"><div class="bar-in">
+  <a class="brand" href="../"><img src="../assets/logo.svg" width="26" height="26" alt="">Notemark</a>
+  <a class="back" href="../">Product page</a>
+  <button class="icon-btn" id="theme-toggle" type="button" aria-label="Switch theme"><svg class="ico ico-moon" aria-hidden="true"><use href="#i-moon"/></svg><svg class="ico ico-sun" aria-hidden="true"><use href="#i-sun"/></svg></button>
+</div></header>
 <main>
-  <h1>Notemark APT repository</h1>
-  <p class="muted">Signed packages for Debian, Ubuntu, Linux Mint and Pop!_OS. This address is read by <code>apt</code>, not meant for browsing. The product page is at <a href="../">notemark.forhad.me</a>.</p>
+  <div class="rise">
+    <p class="pill"><svg class="ico" aria-hidden="true"><use href="#i-shield-check"/></svg>Signed packages · Debian, Ubuntu, Mint, Pop!_OS</p>
+    <h1>Notemark <em>APT repository</em></h1>
+    <p class="lede">Add the repository once and Notemark updates with the rest of your system. This address is read by <code>apt</code>; the product page is at <a href="../">notemark.forhad.me</a>.</p>
+  </div>
 
-  <h2>Add the repository</h2>
-<pre>curl -fsSL https://notemark.forhad.me/apt/notemark.gpg | sudo tee /usr/share/keyrings/notemark.gpg &gt; /dev/null
+  <h2><span class="n">1</span>Add the repository and install</h2>
+  <div class="code"><div class="code-head"><span class="code-lang"><svg class="ico" aria-hidden="true"><use href="#i-terminal"/></svg><span>Terminal</span></span><button class="copy" type="button" aria-label="Copy commands"><span class="copy-ic"><svg class="ico ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="ico ico-check" aria-hidden="true"><use href="#i-check"/></svg></span><span class="copy-label">Copy</span></button></div><pre tabindex="0"><code>curl -fsSL https://notemark.forhad.me/apt/notemark.gpg | sudo tee /usr/share/keyrings/notemark.gpg &gt; /dev/null
 echo "deb [signed-by=/usr/share/keyrings/notemark.gpg] https://notemark.forhad.me/apt stable main" | sudo tee /etc/apt/sources.list.d/notemark.list
-sudo apt update
-sudo apt install notemark</pre>
+sudo apt update &amp;&amp; sudo apt install notemark</code></pre></div>
+  <p class="note">The first line saves the signing key, the second adds the source, the third installs.</p>
 
-  <h2>Remove it</h2>
-<pre>sudo apt remove notemark
-sudo rm /etc/apt/sources.list.d/notemark.list /usr/share/keyrings/notemark.gpg</pre>
+  <h2><span class="n">2</span>Update later</h2>
+  <div class="code"><div class="code-head"><span class="code-lang"><svg class="ico" aria-hidden="true"><use href="#i-terminal"/></svg><span>Terminal</span></span><button class="copy" type="button" aria-label="Copy commands"><span class="copy-ic"><svg class="ico ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="ico ico-check" aria-hidden="true"><use href="#i-check"/></svg></span><span class="copy-label">Copy</span></button></div><pre tabindex="0"><code>sudo apt update &amp;&amp; sudo apt upgrade</code></pre></div>
 
-  <h2>Files</h2>
-  <ul>
-    <li><a href="notemark.gpg">notemark.gpg</a> and <a href="notemark.asc">notemark.asc</a>: the signing key (binary and armored)</li>
-    <li><a href="dists/stable/InRelease">dists/stable/InRelease</a>: the signed index apt reads</li>
-    <li><a href="https://github.com/forhadkhan/notemark/releases">GitHub releases</a>: the same packages as a plain <code>.deb</code>, AppImage and tarball</li>
-  </ul>
+  <h2><svg class="ico" aria-hidden="true"><use href="#i-trash-2"/></svg>Remove it</h2>
+  <div class="code"><div class="code-head"><span class="code-lang"><svg class="ico" aria-hidden="true"><use href="#i-terminal"/></svg><span>Terminal</span></span><button class="copy" type="button" aria-label="Copy commands"><span class="copy-ic"><svg class="ico ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="ico ico-check" aria-hidden="true"><use href="#i-check"/></svg></span><span class="copy-label">Copy</span></button></div><pre tabindex="0"><code>sudo apt remove notemark
+sudo rm /etc/apt/sources.list.d/notemark.list /usr/share/keyrings/notemark.gpg</code></pre></div>
+
+  <h2><svg class="ico" aria-hidden="true"><use href="#i-key-round"/></svg>Files</h2>
+  <ul class="files"><li><a class="file" href="notemark.gpg"><span class="ci"><svg class="ico" aria-hidden="true"><use href="#i-key-round"/></svg></span><span class="ft"><strong>notemark.gpg</strong><span>Signing key, binary (what apt reads)</span></span><svg class="ico go" aria-hidden="true"><use href="#i-arrow-right"/></svg></a></li><li><a class="file" href="notemark.asc"><span class="ci"><svg class="ico" aria-hidden="true"><use href="#i-key-round"/></svg></span><span class="ft"><strong>notemark.asc</strong><span>Signing key, ASCII-armored</span></span><svg class="ico go" aria-hidden="true"><use href="#i-arrow-right"/></svg></a></li><li><a class="file" href="dists/stable/InRelease"><span class="ci"><svg class="ico" aria-hidden="true"><use href="#i-shield-check"/></svg></span><span class="ft"><strong>InRelease</strong><span>The signed index apt verifies</span></span><svg class="ico go" aria-hidden="true"><use href="#i-arrow-right"/></svg></a></li><li><a class="file" href="https://github.com/forhadkhan/notemark/releases"><span class="ci"><svg class="ico" aria-hidden="true"><use href="#i-package"/></svg></span><span class="ft"><strong>GitHub releases</strong><span>The same packages as .deb, AppImage and tarball</span></span><svg class="ico go" aria-hidden="true"><use href="#i-external-link"/></svg></a></li></ul>
+
+  <footer>MIT licence · <a href="https://github.com/forhadkhan/notemark">GitHub</a></footer>
 </main>
+<script>
+(function () {
+  'use strict';
+  var root = document.documentElement, KEY = 'notemark-theme';
+  var dark = window.matchMedia && matchMedia('(prefers-color-scheme: dark)');
+  var toggle = document.getElementById('theme-toggle');
+  function current() { var t = root.getAttribute('data-theme'); return t ? t : (dark && dark.matches ? 'dark' : 'light'); }
+  function sync() { toggle.setAttribute('aria-label', current() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'); }
+  toggle.addEventListener('click', function () {
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem(KEY, next); } catch (e) { /* storage unavailable */ }
+    sync();
+  });
+  sync();
+
+  function fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+  document.querySelectorAll('.code .copy').forEach(function (btn) {
+    var base = btn.getAttribute('aria-label'), label = btn.querySelector('.copy-label'), timer;
+    btn.addEventListener('click', function () {
+      var text = btn.closest('.code').querySelector('code').textContent;
+      function done(ok) {
+        if (!ok) return;
+        btn.classList.add('is-copied'); btn.setAttribute('aria-label', 'Copied'); label.textContent = 'Copied';
+        clearTimeout(timer);
+        timer = setTimeout(function () { btn.classList.remove('is-copied'); btn.setAttribute('aria-label', base); label.textContent = 'Copy'; }, 2000);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(fallbackCopy(text)); });
+      else done(fallbackCopy(text));
+    });
+  });
+
+  // Shell highlighting (DOM nodes only, so copied text is exactly what is shown)
+  var CMD_AFTER = /^(sudo|exec|time|env)$/;
+  var TOKEN = /(#.*)|("(?:[^"\\]|\\.)*"|'[^']*')|(https?:\/\/[^\s"'|]+)|(&&|\|\||\||>>?|\\)|(\s+)|([^\s"'|&>\\#]+)/g;
+  function highlight(text) {
+    var frag = document.createDocumentFragment(), cmd = true, cont = false, m;
+    function put(str, cls) {
+      if (!cls) { frag.appendChild(document.createTextNode(str)); return; }
+      var sp = document.createElement('span'); sp.className = cls; sp.textContent = str; frag.appendChild(sp);
+    }
+    TOKEN.lastIndex = 0;
+    while ((m = TOKEN.exec(text)) !== null) {
+      if (m[1]) put(m[1], 'tk-c');
+      else if (m[2]) { put(m[2], 'tk-s'); cmd = false; }
+      else if (m[3]) { put(m[3], 'tk-u'); cmd = false; }
+      else if (m[4]) { put(m[4], 'tk-o'); if (m[4] === '\\') cont = true; else { cmd = true; cont = false; } }
+      else if (m[5]) { put(m[5]); if (m[5].indexOf('\n') !== -1) { if (cont) cont = false; else cmd = true; } }
+      else if (m[6]) {
+        if (m[6].charAt(0) === '-') put(m[6], 'tk-f');
+        else if (cmd) { put(m[6], 'tk-k'); cmd = CMD_AFTER.test(m[6]); }
+        else put(m[6]);
+      }
+    }
+    return frag;
+  }
+  document.querySelectorAll('.code code').forEach(function (code) {
+    var text = code.textContent, frag = highlight(text), probe = document.createElement('div');
+    probe.appendChild(frag.cloneNode(true));
+    if (probe.textContent !== text) return;
+    code.textContent = '';
+    code.appendChild(frag);
+  });
+
+  // Scrollbars stay hidden until needed.
+  var st;
+  window.addEventListener('scroll', function () {
+    root.classList.add('is-scrolling'); clearTimeout(st);
+    st = setTimeout(function () { root.classList.remove('is-scrolling'); }, 900);
+  }, { passive: true });
+  window.addEventListener('mousemove', function (e) { root.classList.toggle('edge', e.clientX > window.innerWidth - 28); }, { passive: true });
+})();
+</script>
 </body>
 </html>

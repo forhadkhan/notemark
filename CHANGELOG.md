@@ -73,9 +73,9 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   remembers its position, and a synchronised-scrolling toggle.
 - Line and column in the status bar for source and split modes, and a reading-time
   estimate.
-- A signed APT repository at https://forhadkhan.github.io/notemark/apt, so
+- A signed APT repository at https://notemark.forhad.me/apt, so
   Notemark installs and updates through `apt`.
-- A documentation site at https://forhadkhan.github.io/notemark/, built from
+- A documentation site at https://notemark.forhad.me/, built from
   `docs/` and published with `make pages`.
 
 ### Changed

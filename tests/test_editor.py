@@ -540,6 +540,11 @@ def build_cases():
          " [btn.hidden, b.right <= r.right, r.right - b.right < 24, b.top >= r.top, b.top - r.top < 24,"
          " btn.parentNode === document.body, btn.title].join('|')",
          lambda o: o == "false|true|true|true|true|true|Copy code")
+    case("the button keeps its width and position when the label changes to Copied",
+         HOVER + " var a = btn.getBoundingClientRect(); btn.textContent = 'Copied'; btn.classList.add('copied');"
+         " var b = btn.getBoundingClientRect(); btn.textContent = 'Copy'; btn.classList.remove('copied');"
+         " [a.width === b.width, a.left === b.left, a.right === b.right, a.top === b.top, a.width].join('|')",
+         lambda o: o == "true|true|true|true|64")
     case("hovering a paragraph does not move the button off the block at once",
          "document.querySelector('#page p').dispatchEvent(new MouseEvent('mouseover', {bubbles: true}));"
          " document.getElementById('code-copy').hidden", lambda o: o == "false", wait=400)

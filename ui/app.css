@@ -172,7 +172,8 @@ html[data-layout="tb"] .page-inner, html[data-layout="bt"] .page-inner { padding
 /* Floating "Copy" button over the hovered code block (one element, outside the editable page). */
 #code-copy {
   position: fixed; z-index: 20; margin: 0;
-  padding: 2px 8px; font: 12px/1.5 sans-serif; color: var(--muted);
+  box-sizing: border-box; width: 64px; padding: 2px 0; text-align: center;   /* fixed, so "Copy" and "Copied" never move it */
+  font: 12px/1.5 sans-serif; color: var(--muted); white-space: nowrap;
   background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
   opacity: 0.75; cursor: pointer; user-select: none; -webkit-user-select: none;
 }

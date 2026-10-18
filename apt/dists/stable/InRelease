@@ -4,40 +4,40 @@ Hash: SHA512
 Architectures: all
 Codename: stable
 Components: main
-Date: Tue, 13 Oct 2026 17:06:23 +0000
+Date: Sun, 18 Oct 2026 20:45:23 +0000
 Description: Notemark: a Notion-style Markdown editor
 Label: Notemark
 Origin: Notemark
 Suite: stable
 MD5Sum:
- 37be3a7f8cf860b3752b718db6762f7b              879 main/binary-all/Packages
- 4bdb9917d2ffab20c2cc02a00ca7c3a1              586 main/binary-all/Packages.gz
- c73276faade003d97454cf34a9c83c58              676 main/binary-all/Packages.xz
+ c93a7a37a757a9ccdcabc764e6a70e95             1758 main/binary-all/Packages
+ 84931fdd6545e0fe4b8cc5592b9a85c2              718 main/binary-all/Packages.gz
+ 13ba3f4e01c7a567ce07c7bb7dff46ea              788 main/binary-all/Packages.xz
 SHA1:
- abbe1b6bb460204968e279b47f040a81f7b33262              879 main/binary-all/Packages
- 7fad6538657b1b640edc155a3e5cb235ba1cb282              586 main/binary-all/Packages.gz
- 55489e7ceb1c6c7db9648c1b31dd8bf2217a2c39              676 main/binary-all/Packages.xz
+ 6eecf91aca993961730bae9b0908a265c2305e28             1758 main/binary-all/Packages
+ d1e9bdad24f87067344ea176c024e5c181641e87              718 main/binary-all/Packages.gz
+ 4267e99a4ded88f43e91dba2c7fa348c21e32aa8              788 main/binary-all/Packages.xz
 SHA256:
- 1bf373d647eb02aa467e95527831a494c23f056bc3662938b13ef494f823cc9b              879 main/binary-all/Packages
- f003213db53896d2f1dca45050021ac1db3cd26f0142a9dc961d3a86d221ba93              586 main/binary-all/Packages.gz
- aac8cf426f5b578f7e78ea62b99daa4c53b4b2a4480eb69452b6dadbecd752fa              676 main/binary-all/Packages.xz
+ eb6ea131ede3bb873118f16ee102930dfb6c9a53ffa99599fd6816a509fa2519             1758 main/binary-all/Packages
+ 6aac9f49080d1ac77b9729fc68eecf0ecc88f21913556486a7740a905d360053              718 main/binary-all/Packages.gz
+ b2c43423522bc37732cf7b887e33a239c430c38df4dcb556dccc9190ed330db9              788 main/binary-all/Packages.xz
 SHA512:
- 2e3548859c834196861986b081802e3aaa53f0970999e94d6ce01386effbd2a54fff31b94f9493db879536189c65475862cdd75e8eb1d70b6e70c94f66ada71a              879 main/binary-all/Packages
- 6cc4e488f6978079dbaa38db84184ab413659252c485406b574535a3aae60e8070bafbc355bfdbc3f89117a91e8f06c7fabbdf2f0c2083951724502eb9f67001              586 main/binary-all/Packages.gz
- 0ab605e36eb2c819b4e1bcdebe435099b85226e7348ca85043efa64d743d0c29bff1e504b88175d17d92a05537b145f4dca3e022337464caa6dd115103da4209              676 main/binary-all/Packages.xz
+ 3aee783a5f576f75a0385ffd4ca27c18dff846b7a816a707d25c54d71eb327ea880ab5af3d7f6de1e850e20ef9d5714ab8aad5565c4a3e457adffecbae03101f             1758 main/binary-all/Packages
+ 6d547819eeb5cfbcce35547678786516e528eb898ba9f300a1aab1d892cbe57a3cb795cd5758ec961d623172313aeb34c2e2428e1082fdc630e823b63d004c5c              718 main/binary-all/Packages.gz
+ 063cd4c5f26a5f2593d540fd0528d1cfc34408d08f812976098d8bd9baea8f01b2a181ce2e2c78d40c05eb0e43475de92235465042c50864365ec19d40e781ac              788 main/binary-all/Packages.xz
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCgAdFiEEmCOek9H5OiqN81V9sr/ENa8uMEAFAmrOZQ8ACgkQsr/ENa8u
-MEACgA//SNnO/isbbreVfBcQVmCbLknSYGKk4Iqo2wb4SNjUC0F4GESC37uGRi+N
-TyI36jM/lKuWaWM9pQTMV0SbvgUgIPHYzKJETmRTAbHz59cjsIX4RK9a6Z5PL+Pc
-2Epb3Nmjo0nG2zOZc4Jq9kmGtP4sFs5IOO5TeBa8qVsi/qEX2vJTf2E+kj3Ncm82
-7JQg8bjPkdtShytfJDqxQrTTraArYTrioThZKqEBgwxXZtrQc+Eof8B3d64/Jdn5
-piz8hiMRagBKYPFxohLT6hmG3UIbaxlf8myoCTX9p80UBbk7/G4F1YMu7tukGiJE
-6W4zXimLAyI1lSi0aFyu6CBOimh97lk9l0D0lagYzeX3COhgm6IEZa05+Pwc2DhO
-QDnYEQFDhU+obfVBn/AaBwia5hfjRp4DsoySXE8LKKpMDgIhEM3ExIoN9WgXPfZs
-BX4FVnIrwgYwNp6bOc6EqTY485tgyg1AQF5/d0K6wYEGrUpgwl2y/kEBjQEmJ4AW
-IHhDdIud7bO2A0yFMAZKMNqHtGNjSgNxW1/5EJTaKw/DbshMgAIXfoY7r6xdlfu8
-SQgSzommcjPc2TlZRFMDbu889t1ycSpC5f0ADKkiK7n66YW9ARPZtFaM+24W85lk
-wVj9jaNNvvEQA0fT8yMtlfg4Rz+SSKm/6INkrI0SYFPjIshD9lg=
-=w1ef
+iQIzBAEBCgAdFiEEmCOek9H5OiqN81V9sr/ENa8uMEAFAmrVL+MACgkQsr/ENa8u
+MECP9RAAiWPHzfly6CrmtXLOIditAApSr8zJy800Ni2S4IBVE6xCEKTqsuAPcC18
+A+V7Ls1FiMDzQrb4be126bMB8JVkVMXlYj05h+ftQ9iTe0CaK7ZhsKia4SNTS9N0
+zYrJ++klsqMi4cGw2sHgneDEsK5PRNTOKAfwYq11L3TMcCEHEXWmhZLiUeAlx8OK
+rMQQmf0s2OAMhw7gVkR6q8OcmXzL+/sLFfT5It/clOEybZK0fk6K4hYCTeGMWV2A
+REq1S9hZIrGs37zdRg4VQwesGbrsUlrdfQjLe7OqJrqA/L3b8MNPz+2SdJzoTdeU
+iKYeJV5gTla4HkS/Kf2RdYuk76IgF4nX+zpC5dp9Uj9WcQPz+bhzgAiUBgs/nVUe
+r9LkecyhizYby80h01GQQHs1z0rNQv9DyLHaLYNvopeK6ennkRQa3Jr6g1Aq+kRu
+FcSGXNS/i9M+m3DzgDpZZ/WMk5EBv58pAPwdp2Te9jz5owN5PZ4WLjAGdmY2f7lZ
+CFBubnhUVeMfqnGjTviMupQ9FnUOuKnjJTx0pr4rfrIuVOLHG8bFoGxv2qvgmEv0
+ITyDvX2YHxOliJuzx9G2yAftrtdeC9Sc9qPGLuLd4Cst5Z1qdaGJkNMzdNR6KSST
+giWY7LrvJRkjurf2q+if0pC1gX1H2D1vW1Ec+hTO8IXN9E0d/oI=
+=DSib
 -----END PGP SIGNATURE-----

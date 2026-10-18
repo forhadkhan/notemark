@@ -34,6 +34,7 @@ touch "$WT/.nojekyll"
 mkdir -p "$WT/apt/pool/main/n/notemark"
 cp "$DEB" "$WT/apt/pool/main/n/notemark/"
 packaging/build-apt-repo.sh "$WT/apt"
+cp packaging/apt-index.html "$WT/apt/index.html"   # so /apt/ is not a 404 in a browser
 
 cd "$WT"
 git add -A

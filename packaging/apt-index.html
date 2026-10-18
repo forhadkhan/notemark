@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notemark APT repository</title>
+<meta name="description" content="Signed APT repository for Notemark, a Notion-style Markdown editor for Linux.">
+<link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
+<style>
+:root { color-scheme: light dark; --bg: #fcfbfa; --fg: #1d1c1a; --muted: #5f5b57; --line: #e7e3df; --code: #f4f2ef; --accent: #b3411a; }
+@media (prefers-color-scheme: dark) { :root { --bg: #0d0d0e; --fg: #efeeec; --muted: #a4a09b; --line: #2a2a2d; --code: #1c1c1f; --accent: #f47a46; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 680px; margin: 0 auto; padding: 56px 16px 72px; }
+h1 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 8px; letter-spacing: -.02em; }
+h2 { font-size: 1.1rem; margin: 36px 0 8px; }
+p { margin: 0 0 12px; }
+.muted { color: var(--muted); }
+a { color: var(--accent); }
+pre { margin: 0 0 12px; padding: 14px 16px; background: var(--code); border: 1px solid var(--line); border-radius: 10px; overflow-x: auto; font: 13.5px/1.55 ui-monospace, "SF Mono", Menlo, monospace; }
+ul { padding-left: 20px; margin: 0; }
+li { margin: 4px 0; }
+code { font: 0.92em ui-monospace, "SF Mono", Menlo, monospace; background: var(--code); padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Notemark APT repository</h1>
+  <p class="muted">Signed packages for Debian, Ubuntu, Linux Mint and Pop!_OS. This address is read by <code>apt</code>, not meant for browsing. The product page is at <a href="../">notemark.forhad.me</a>.</p>
+
+  <h2>Add the repository</h2>
+<pre>curl -fsSL https://notemark.forhad.me/apt/notemark.gpg | sudo tee /usr/share/keyrings/notemark.gpg &gt; /dev/null
+echo "deb [signed-by=/usr/share/keyrings/notemark.gpg] https://notemark.forhad.me/apt stable main" | sudo tee /etc/apt/sources.list.d/notemark.list
+sudo apt update
+sudo apt install notemark</pre>
+
+  <h2>Remove it</h2>
+<pre>sudo apt remove notemark
+sudo rm /etc/apt/sources.list.d/notemark.list /usr/share/keyrings/notemark.gpg</pre>
+
+  <h2>Files</h2>
+  <ul>
+    <li><a href="notemark.gpg">notemark.gpg</a> and <a href="notemark.asc">notemark.asc</a>: the signing key (binary and armored)</li>
+    <li><a href="dists/stable/InRelease">dists/stable/InRelease</a>: the signed index apt reads</li>
+    <li><a href="https://github.com/forhadkhan/notemark/releases">GitHub releases</a>: the same packages as a plain <code>.deb</code>, AppImage and tarball</li>
+  </ul>
+</main>
+</body>
+</html>

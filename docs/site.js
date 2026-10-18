@@ -93,17 +93,20 @@
   }
   document.querySelectorAll('.code .copy').forEach(function (btn) {
     var base = btn.getAttribute('aria-label');
+    var label = btn.querySelector('.copy-label');
     var timer;
     btn.addEventListener('click', function () {
-      var text = btn.parentNode.querySelector('code').textContent;
+      var text = btn.closest('.code').querySelector('code').textContent;
       function done(ok) {
         if (!ok) return;
         btn.classList.add('is-copied');
         btn.setAttribute('aria-label', 'Copied');
+        label.textContent = 'Copied';
         clearTimeout(timer);
         timer = setTimeout(function () {
           btn.classList.remove('is-copied');
           btn.setAttribute('aria-label', base);
+          label.textContent = 'Copy';
         }, 2000);
       }
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -112,6 +115,65 @@
         done(fallbackCopy(text));
       }
     });
+  });
+
+  // Shell highlighting (DOM nodes only, so copied text is exactly what is shown)
+  var CMD_AFTER = /^(sudo|exec|time|env)$/;
+  var TOKEN = /(#.*)|("(?:[^"\\]|\\.)*"|'[^']*')|(https?:\/\/[^\s"'|]+)|(&&|\|\||\||>>?|\\)|(\s+)|([^\s"'|&>\\#]+)/g;
+  function highlight(text) {
+    var frag = document.createDocumentFragment();
+    var cmd = true, cont = false, m;
+    function put(str, cls) {
+      if (!cls) { frag.appendChild(document.createTextNode(str)); return; }
+      var sp = document.createElement('span');
+      sp.className = cls;
+      sp.textContent = str;
+      frag.appendChild(sp);
+    }
+    TOKEN.lastIndex = 0;
+    while ((m = TOKEN.exec(text)) !== null) {
+      if (m[1]) put(m[1], 'tk-c');
+      else if (m[2]) { put(m[2], 'tk-s'); cmd = false; }
+      else if (m[3]) { put(m[3], 'tk-u'); cmd = false; }
+      else if (m[4]) {
+        put(m[4], 'tk-o');
+        if (m[4] === '\\') cont = true; else { cmd = true; cont = false; }
+      } else if (m[5]) {
+        put(m[5]);
+        if (m[5].indexOf('\n') !== -1) { if (cont) cont = false; else cmd = true; }
+      } else if (m[6]) {
+        if (m[6].charAt(0) === '-') put(m[6], 'tk-f');
+        else if (cmd) { put(m[6], 'tk-k'); cmd = CMD_AFTER.test(m[6]); }
+        else put(m[6]);
+      }
+    }
+    return frag;
+  }
+  document.querySelectorAll('.code code').forEach(function (code) {
+    var text = code.textContent;
+    var frag = highlight(text);
+    var probe = document.createElement('div');
+    probe.appendChild(frag.cloneNode(true));
+    if (probe.textContent !== text) return;
+    code.textContent = '';
+    code.appendChild(frag);
+  });
+
+  // Scrollbars are hidden until needed: show the page one while scrolling or when the pointer is at the right edge.
+  var scrollTimer;
+  window.addEventListener('scroll', function () {
+    root.classList.add('is-scrolling');
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(function () { root.classList.remove('is-scrolling'); }, 900);
+  }, { passive: true });
+  window.addEventListener('mousemove', function (e) {
+    root.classList.toggle('edge', e.clientX > window.innerWidth - 28);
+  }, { passive: true });
+  // Wide tables scroll sideways: let keyboard users focus them too.
+  document.querySelectorAll('.table-wrap').forEach(function (w) {
+    w.tabIndex = 0;
+    w.setAttribute('role', 'region');
+    w.setAttribute('aria-label', 'Scrollable table');
   });
 
   // Mobile menu -----------------------------------------------------------

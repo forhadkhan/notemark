@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page not found | Notemark</title>
+<meta name="description" content="This page does not exist. Notemark is a lightweight WYSIWYG Markdown editor for Linux.">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#fcfbfa" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0d0e" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+<script>try{var t=localStorage.getItem('notemark-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<style>
+/* Served by GitHub Pages for any missing path, at any depth: every URL here is absolute. Self-contained, no third-party requests. */
+:root {
+  color-scheme: light dark;
+  --bg: light-dark(#fcfbfa, #0d0d0e);
+  --surface: light-dark(#f5f2ee, #161618);
+  --raise: light-dark(#ffffff, #2b2b31);
+  --sub: light-dark(#ece8e3, #202024);
+  --fg: light-dark(#1d1c1a, #efeeec);
+  --muted: light-dark(#5f5b57, #a4a09b);
+  --line: light-dark(#e7e3df, #2a2a2d);
+  --accent: #d9531e;
+  --accent-strong: #c24716;
+  --accent-text: light-dark(#b3411a, #f47a46);
+  --accent-soft: light-dark(#fdeee6, #2b1810);
+  --thumb: light-dark(rgb(60 50 40 / .34), rgb(255 255 255 / .3));
+  --code-bg: light-dark(#17171b, #060607);
+  --code-bar: light-dark(#202027, #151519);
+  --code-fg: #ebe9e6;
+  --code-dim: #9b99a3;
+  --tk-cmd: #ffa66d;
+  --tk-flag: #7fd0e8;
+  --tk-str: #a6d98b;
+  --tk-url: #8fb4ff;
+  --tk-op: #c4a7ff;
+  --sh1: light-dark(rgb(30 20 10 / .08), rgb(0 0 0 / .45));
+  --sh2: light-dark(rgb(30 20 10 / .22), rgb(0 0 0 / .7));
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", "DejaVu Sans Mono", "Ubuntu Mono", Menlo, Consolas, monospace;
+  --r: 14px;
+  --wrap: 1120px;
+  --ease: cubic-bezier(.22, .8, .24, 1);
+}
+[data-theme="light"] { color-scheme: light; }
+[data-theme="dark"] { color-scheme: dark; }
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; margin: 0; background: var(--bg); color: var(--fg); font: 1.0625rem/1.7 var(--font); -webkit-font-smoothing: antialiased; }
+a { color: var(--accent-text); text-underline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; border-radius: 8px; }
+code { font-family: var(--mono); font-size: .88em; font-variant-ligatures: none; }
+.ico { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ico-gh { fill: currentColor; stroke: none; }
+html, pre { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+pre:hover, pre:focus-visible { scrollbar-color: var(--thumb) transparent; }
+
+.bar-in { display: flex; align-items: center; gap: 12px; max-width: 1120px; height: 56px; margin: 0 auto; padding: 0 20px; }
+.brand { display: inline-flex; align-items: center; gap: 10px; margin-right: auto; font-weight: 700; letter-spacing: -.01em; color: var(--fg); text-decoration: none; }
+.brand img { display: block; }
+.icon-btn { position: relative; display: inline-grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 10px; background: none; color: var(--muted); cursor: pointer; transition: color .2s, background-color .2s, transform .2s var(--ease); }
+.icon-btn:hover { color: var(--fg); background: var(--sub); }
+.icon-btn:active { transform: scale(.92); }
+.icon-btn .ico { grid-area: 1 / 1; transition: transform .45s var(--ease), opacity .3s; }
+.ico-sun { opacity: 0; transform: rotate(-90deg) scale(.5); }
+[data-theme="dark"] .ico-sun { opacity: 1; transform: none; }
+[data-theme="dark"] .ico-moon { opacity: 0; transform: rotate(90deg) scale(.5); }
+
+main { position: relative; isolation: isolate; flex: 1; display: grid; align-content: center; justify-items: center; padding: 24px 20px 72px; text-align: center; overflow: clip; }
+main::before { content: ""; position: absolute; z-index: -1; left: 50%; top: 50%; width: min(820px, 150vw); aspect-ratio: 1; transform: translate(-50%, -55%); background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 20%, transparent), transparent); opacity: .6; animation: glow 10s ease-in-out infinite alternate; }
+@keyframes glow { to { transform: translate(-50%, -48%) scale(1.08); } }
+.code404 { margin: 0 0 6px; font-size: clamp(6rem, 24vw, 12rem); font-weight: 800; line-height: .95; letter-spacing: -.035em; color: var(--accent-text); animation: float 6s ease-in-out infinite alternate; }
+.code404 span { display: inline-block; }
+.code404 .o { color: var(--fg); animation: wobble 6s ease-in-out infinite alternate; }
+@keyframes float { to { transform: translateY(-8px); } }
+@keyframes wobble { from { transform: rotate(-4deg); } to { transform: rotate(5deg); } }
+h1 { margin: 0 0 10px; font-size: clamp(1.6rem, 4.4vw, 2.4rem); font-weight: 750; letter-spacing: -.035em; line-height: 1.15; text-wrap: balance; }
+.lede { max-width: 46ch; margin: 0 0 28px; color: var(--muted); text-wrap: pretty; }
+
+.term { width: min(100%, 520px); margin: 0 0 32px; overflow: hidden; border-radius: 12px; background: var(--code-bg); color: var(--code-fg); text-align: left; box-shadow: 0 14px 30px -22px var(--sh2); }
+.term-head { display: flex; align-items: center; gap: 8px; padding: 9px 14px; background: var(--code-bar); font-size: .78rem; font-weight: 600; letter-spacing: .04em; color: var(--code-dim); }
+.term-head .ico { width: 15px; height: 15px; }
+.term pre { margin: 0; padding: 14px 18px; overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y; font-family: var(--mono); font-size: .875rem; line-height: 1.8; white-space: pre; }
+.k { color: var(--tk-cmd); }
+.s { color: var(--tk-str); }
+.e { color: #ff8f8f; }
+.d { color: var(--code-dim); }
+.caret { display: inline-block; width: .55em; height: 1.1em; margin-left: 2px; vertical-align: -.2em; background: var(--tk-cmd); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+.cta { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 0 20px; white-space: nowrap; border: 0; border-radius: 999px; background: var(--surface); color: var(--fg); font: inherit; font-weight: 600; text-decoration: none; transition: transform .25s var(--ease), background-color .2s, box-shadow .25s; }
+.btn:hover { transform: translateY(-2px); background: var(--sub); box-shadow: 0 8px 20px -10px var(--sh2); }
+.btn:active { transform: translateY(0); }
+.btn-primary { background: var(--accent-strong); color: #fff; }
+.btn-primary:hover { background: #a93d12; }
+.hint { margin: 28px 0 0; font-size: .9rem; color: var(--muted); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .rise { animation: rise .7s var(--ease) var(--d, 0s) backwards; }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; } }
+@media (max-width: 520px) { .btn { flex: 1 1 150px; padding: 0 12px; } .term pre { font-size: .82rem; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-house" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></symbol><symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z" /></symbol><symbol id="i-terminal" viewBox="0 0 24 24"><path d="M12 19h8" /><path d="m4 17 6-6-6-6" /></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" /></symbol><symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></symbol><symbol id="i-package" viewBox="0 0 24 24"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z" /><path d="M12 22V12" /><polyline points="3.29 7 12 12 20.71 7" /><path d="m7.5 4.27 9 5.15" /></symbol><symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></symbol><symbol id="i-gh" viewBox="0 0 24 24"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2c-3.2.7-3.87-1.37-3.87-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.03 1.76 2.69 1.25 3.35.96.1-.74.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.18-3.09-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.78 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.18 1.83 1.18 3.09 0 4.41-2.69 5.38-5.25 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></symbol></defs></svg>
+<header><div class="bar-in">
+  <a class="brand" href="/"><img src="/assets/logo.svg" width="26" height="26" alt="">Notemark</a>
+  <button class="icon-btn" id="theme-toggle" type="button" aria-label="Switch theme"><svg class="ico ico-moon" aria-hidden="true"><use href="#i-moon"/></svg><svg class="ico ico-sun" aria-hidden="true"><use href="#i-sun"/></svg></button>
+</div></header>
+<main>
+  <p class="code404 rise" aria-hidden="true"><span>4</span><span class="o">0</span><span>4</span></p>
+  <h1 class="rise" style="--d:.08s">This page isn&rsquo;t in the notebook.</h1>
+  <p class="lede rise" style="--d:.14s">The link may be old or mistyped. Nothing is lost: everything Notemark has lives on the home page.</p>
+  <div class="term rise" style="--d:.2s" role="img" aria-label="Terminal: notemark reports that the page does not exist">
+    <div class="term-head"><svg class="ico" aria-hidden="true"><use href="#i-terminal"/></svg>Terminal</div>
+<pre><span class="k">notemark</span> <span class="s" id="path">/this-page</span>
+<span class="e">notemark: no such page</span>
+<span class="d">hint: try the home page instead</span> <span class="caret"></span></pre>
+  </div>
+  <div class="cta rise" style="--d:.26s">
+    <a class="btn btn-primary" href="/"><svg class="ico" aria-hidden="true"><use href="#i-house"/></svg>Back to home</a>
+    <a class="btn" href="/#install"><svg class="ico" aria-hidden="true"><use href="#i-package"/></svg>Install</a>
+    <a class="btn" href="/apt/"><svg class="ico" aria-hidden="true"><use href="#i-terminal"/></svg>APT repository</a>
+    <a class="btn" href="https://github.com/forhadkhan/notemark"><svg class="ico ico-gh" aria-hidden="true"><use href="#i-gh"/></svg>GitHub</a>
+  </div>
+</main>
+<script>
+(function () {
+  'use strict';
+  var root = document.documentElement;
+  var dark = window.matchMedia && matchMedia('(prefers-color-scheme: dark)');
+  var toggle = document.getElementById('theme-toggle');
+  function current() { var t = root.getAttribute('data-theme'); return t ? t : (dark && dark.matches ? 'dark' : 'light'); }
+  function sync() { toggle.setAttribute('aria-label', current() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'); }
+  toggle.addEventListener('click', function () {
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('notemark-theme', next); } catch (e) { /* storage unavailable */ }
+    sync();
+  });
+  sync();
+  // Echo the missing path (textContent only, never markup).
+  var p = location.pathname;
+  if (p && p !== '/') document.getElementById('path').textContent = p.length > 48 ? p.slice(0, 47) + '\u2026' : p;
+})();
+</script>
+</body>
+</html>

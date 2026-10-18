@@ -4,7 +4,7 @@
 
 [![Latest release](https://img.shields.io/github/v/release/forhadkhan/notemark?label=release)](https://github.com/forhadkhan/notemark/releases/latest)
 [![License](https://img.shields.io/github/license/forhadkhan/notemark?label=licence)](LICENSE)
-[![Documentation](https://img.shields.io/badge/docs-forhadkhan.github.io%2Fnotemark-d9531e)](https://forhadkhan.github.io/notemark/)
+[![Documentation](https://img.shields.io/badge/docs-notemark.forhad.me-d9531e)](https://notemark.forhad.me/)
 
 A Notion-style Markdown editor for Linux. The rendered page is the editor: you
 type into formatted text, Markdown shortcuts convert as you type, and your notes
@@ -69,8 +69,8 @@ Add the signed repository once and Notemark updates with the rest of your
 system. This works on Debian, Ubuntu, Linux Mint, Pop!\_OS and other derivatives.
 
 ```bash
-curl -fsSL https://forhadkhan.github.io/notemark/apt/notemark.gpg | sudo tee /usr/share/keyrings/notemark.gpg > /dev/null
-echo "deb [signed-by=/usr/share/keyrings/notemark.gpg] https://forhadkhan.github.io/notemark/apt stable main" | sudo tee /etc/apt/sources.list.d/notemark.list
+curl -fsSL https://notemark.forhad.me/apt/notemark.gpg | sudo tee /usr/share/keyrings/notemark.gpg > /dev/null
+echo "deb [signed-by=/usr/share/keyrings/notemark.gpg] https://notemark.forhad.me/apt stable main" | sudo tee /etc/apt/sources.list.d/notemark.list
 sudo apt update && sudo apt install notemark
 ```
 
@@ -275,7 +275,7 @@ If a test run stops with "GDK is not able to create a GL context", set
 Notemark is written and maintained by
 [Forhad Khan](https://forhadkhan.com)
 ([@forhadkhan](https://github.com/forhadkhan) on GitHub). Documentation:
-<https://forhadkhan.github.io/notemark/>. Bug reports and ideas are welcome in
+<https://notemark.forhad.me/>. Bug reports and ideas are welcome in
 the [issue tracker](https://github.com/forhadkhan/notemark/issues).
 
 ## Licence

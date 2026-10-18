@@ -9,8 +9,8 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="Notemark: a Notion-style Markdown editor for Linux">
 <meta property="og:description" content="Type into formatted text, keep plain .md files. No Electron, no accounts, no sync.">
-<meta property="og:url" content="https://forhadkhan.github.io/notemark/">
-<meta property="og:image" content="https://forhadkhan.github.io/notemark/assets/logo.svg">
+<meta property="og:url" content="https://notemark.forhad.me/">
+<meta property="og:image" content="https://notemark.forhad.me/assets/logo.svg">
 <meta name="twitter:card" content="summary">
 <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
 <link rel="stylesheet" href="style.css">
@@ -113,8 +113,8 @@
         <div class="panel" role="tabpanel" id="panel-apt" aria-labelledby="tab-apt">
           <h3>APT repository (Debian, Ubuntu, Mint, Pop!_OS)</h3>
           <p>Add the signing key and the repository, then install. Updates then arrive with your normal system updates.</p>
-          <div class="code"><button class="copy" type="button" aria-label="Copy commands"><svg class="ico ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="ico ico-check" aria-hidden="true"><use href="#i-check"/></svg><span class="copied" aria-hidden="true">Copied</span></button><pre><code>curl -fsSL https://forhadkhan.github.io/notemark/apt/notemark.gpg | sudo tee /usr/share/keyrings/notemark.gpg &gt; /dev/null
-echo "deb [signed-by=/usr/share/keyrings/notemark.gpg] https://forhadkhan.github.io/notemark/apt stable main" | sudo tee /etc/apt/sources.list.d/notemark.list
+          <div class="code"><button class="copy" type="button" aria-label="Copy commands"><svg class="ico ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="ico ico-check" aria-hidden="true"><use href="#i-check"/></svg><span class="copied" aria-hidden="true">Copied</span></button><pre><code>curl -fsSL https://notemark.forhad.me/apt/notemark.gpg | sudo tee /usr/share/keyrings/notemark.gpg &gt; /dev/null
+echo "deb [signed-by=/usr/share/keyrings/notemark.gpg] https://notemark.forhad.me/apt stable main" | sudo tee /etc/apt/sources.list.d/notemark.list
 sudo apt update &amp;&amp; sudo apt install notemark</code></pre></div>
           <p>Update later:</p>
           <div class="code"><button class="copy" type="button" aria-label="Copy command"><svg class="ico ico-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="ico ico-check" aria-hidden="true"><use href="#i-check"/></svg><span class="copied" aria-hidden="true">Copied</span></button><pre><code>sudo apt update &amp;&amp; sudo apt upgrade</code></pre></div>

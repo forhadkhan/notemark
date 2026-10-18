@@ -1,7 +1,7 @@
 #!/bin/sh
 # Publish the documentation site (docs/) and the signed APT repository to the
 # gh-pages branch, which GitHub Pages serves at
-# https://forhadkhan.github.io/notemark/ (APT repo under /apt).
+# https://notemark.forhad.me/ (APT repo under /apt).
 #
 #   packaging/publish-pages.sh           commit to a local gh-pages branch
 #   packaging/publish-pages.sh --push    ...and push it to origin
@@ -29,7 +29,7 @@ else
   (cd "$WT" && git checkout -q --orphan gh-pages && git rm -rfq . && git clean -fdxq)
 fi
 
-rsync -a --delete --exclude apt --exclude .git docs/ "$WT/"
+rsync -a --delete --exclude apt --exclude .git docs/ "$WT/"   # docs/CNAME keeps the custom domain
 touch "$WT/.nojekyll"
 mkdir -p "$WT/apt/pool/main/n/notemark"
 cp "$DEB" "$WT/apt/pool/main/n/notemark/"

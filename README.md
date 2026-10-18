@@ -24,9 +24,9 @@ driving GTK 3 and WebKitGTK, and the installed package is under 250 KB.
 
 Commands for each are in [Installation](#installation) below.
 
-![Notemark in page mode, light theme](screenshots/light-page.png)
+![Notemark in page mode, light theme](docs/assets/shots/page-light.webp)
 
-![Notemark in page mode, dark theme](screenshots/dark-page-editing.png)
+![Notemark in page mode, dark theme](docs/assets/shots/page-dark.webp)
 
 ## Features
 

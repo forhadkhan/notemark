@@ -545,6 +545,11 @@ def build_cases():
          " var b = btn.getBoundingClientRect(); btn.textContent = 'Copy'; btn.classList.remove('copied');"
          " [a.width === b.width, a.left === b.left, a.right === b.right, a.top === b.top, a.width].join('|')",
          lambda o: o == "true|true|true|true|64")
+    case("the button border stays the same colour when copied, and it never gets an outline",
+         HOVER + " var cs = function(){ var c = getComputedStyle(btn); return c.borderTopColor + '/' + c.outlineStyle + '/' + c.borderTopWidth; };"
+         " var a = cs(); btn.classList.add('copied'); btn.focus(); var b = cs(); btn.classList.remove('copied'); btn.blur();"
+         " (a === b) + '|' + b.split('/')[1]",
+         lambda o: o == "true|none")
     case("hovering a paragraph does not move the button off the block at once",
          "document.querySelector('#page p').dispatchEvent(new MouseEvent('mouseover', {bubbles: true}));"
          " document.getElementById('code-copy').hidden", lambda o: o == "false", wait=400)

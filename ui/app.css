@@ -179,7 +179,8 @@ html[data-layout="tb"] .page-inner, html[data-layout="bt"] .page-inner { padding
 }
 #code-copy[hidden] { display: none; }
 #code-copy:hover { opacity: 1; color: var(--fg); }
-#code-copy.copied { opacity: 1; color: var(--accent); border-color: var(--accent); }
+#code-copy:focus, #code-copy:focus-visible, #code-copy:active { outline: none; }
+#code-copy.copied { opacity: 1; color: var(--accent); }   /* the border never changes colour */
 
 .prose table { border-collapse: collapse; width: 100%; margin: 0.9em 0; font-size: 0.95em; display: block; overflow-x: auto; }
 .prose th, .prose td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; vertical-align: top; }
